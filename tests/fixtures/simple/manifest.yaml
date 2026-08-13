@@ -1,0 +1,6 @@
+registry:
+  schemas:
+    simple: { from: './tests/fixtures/simple/schema.js' }
+profiles:
+  default:
+    schemas: [simple]
