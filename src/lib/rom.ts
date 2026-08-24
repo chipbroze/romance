@@ -328,19 +328,19 @@ class Rom {
   }
 
   jsr <T> (offset: number, handler: () => T): T;
-  jsr <T> (config: { start: number; end?: number }, handler: () => T): T;
+  jsr <T> (config: { start: number; end: number | undefined }, handler: () => T): T;
   jsr <T> (
-    offsetOrConfig: number | { start: number; end?: number },
+    offsetOrConfig: number | { start: number; end: number | undefined },
     handler: () => T
   ): T {
     const config = typeof offsetOrConfig === 'number'
-      ? { start: offsetOrConfig }
+      ? { start: offsetOrConfig, end: undefined }
       : offsetOrConfig;
 
     return this.with(this.frame(config), handler);
   }
 
-  frame ({ start, end }: { start: number, end?: number }): Frame {
+  frame ({ start, end }: { start: number, end: number | undefined }): Frame {
     const range_start = this.#mapTo(start);
     const range_end = end == null ? null : this.#mapTo(end);
 

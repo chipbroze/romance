@@ -58,7 +58,7 @@ class Range {
   #jsr <T> (rom: Rom, func: () => T): T {
     return rom.jsr({
       start: +this.#org,
-      ...(this.#end && { end: +this.#end })
+      end: this.#end ? +this.#end : undefined
     }, func);
   }
 
