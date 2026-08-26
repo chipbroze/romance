@@ -9,10 +9,11 @@ import { CacheMap, EvilMap } from './map-utils.js';
 type Hook = (data: unknown) => void;
 
 type ProfileConfig = {
-  [key: string]: unknown;
   schemas?: 'all' | Iterable<string>;
   hooks?: 'all' | Iterable<string>;
 };
+
+type ProfileRegistry = Record<string, ProfileConfig>;
 
 class Project {
   #schemas: CacheMap<
@@ -27,7 +28,7 @@ class Project {
     typeset: TypeRegistry;
     schemas: Map<string, { item: unknown }>;
     hooks: Map<string, Hook>;
-    profiles?: Record<string, ProfileConfig> | undefined;
+    profiles?: ProfileRegistry | undefined;
   }) {
     this.#schemas = new CacheMap(schemas.entries(), (id, schema) => {
       return new SchemaGraph(id, typeset).compile(schema.item);
@@ -61,8 +62,8 @@ class Project {
   }
 
   engine ({ profile, overrides }: {
-    profile?: string;
-    overrides?: Partial<ProfileConfig>;
+    profile?: string | undefined;
+    overrides?: ProfileConfig | undefined;
   } = {}): Engine {
     const profile_obj: ProfileConfig = {
       ...(this.#profiles[profile!] || this.#profiles.default),
@@ -88,3 +89,4 @@ class Project {
 }
 
 export { Project };
+export type { Hook, ProfileRegistry };

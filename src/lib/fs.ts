@@ -45,16 +45,20 @@ async function safeFile <T> (
   );
 }
 
-type DirectoryTree <T> = T | EvilMap<string, DirectoryTree<T>>;
+type DirectoryTree <T> = EvilMap<string, DirectoryTree<T> | T>;
+
+async function isDirectory (file_path: string): Promise<boolean> {
+  const stats = await fs.stat(file_path);
+  return stats.isDirectory();
+}
 
 async function readDir <T> (
   file_path: string,
   readFile: (file_path: string) => Promise<T>
 ): Promise<DirectoryTree<T>> {
-  const stats = await fs.stat(file_path); 
-
-  if (!stats.isDirectory()) {
-    return readFile(file_path);
+  const is_directory = await isDirectory(file_path);
+  if (!is_directory) {
+    throw new Error(`File path is not a directory: ${file_path}`);
   }
 
   const children = await fs.readdir(file_path);
@@ -63,12 +67,16 @@ async function readDir <T> (
   }).map(async child => {
     const child_path = path.join(file_path, child);
     const name = path.basename(child, path.extname(child));
-    const result = await readDir(child_path, readFile);
+    const child_is_directory = await isDirectory(child_path);
+    const result = (child_is_directory
+      ? await readDir(child_path, readFile)
+      : await readFile(child_path)
+    );
+
     return [name, result] as const;
   }));
 
-  return new EvilMap(child_entries);
-}
+  return new EvilMap(child_entries); }
 
 async function writeDir <T> (
   dir_path: string,

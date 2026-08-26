@@ -355,4 +355,7 @@ class Engine {
 export {
   Engine
 };
-
+export type {
+  FormatOutput,
+  EngineOptions
+};
