@@ -1,8 +1,8 @@
 /* Engine */
 
-import type { SchemaGraph, SchemaNode } from './schema-graph.js';
+import { SchemaGraph, type SchemaNode } from './schema-graph.js';
 import type { RomFormat } from './rom.js';
-import type { SessionApi } from './type-registry.js';
+import { TypeRegistry, type SessionApi } from './type-registry.js';
 import { Rom } from './rom.js';
 import * as assert from './assert.js';
 
@@ -277,6 +277,17 @@ class Engine {
     this.#schemas = schemas;
     this.#hooks = hooks || [];
     this.#rom_format = 'hirom';
+  }
+
+  static from ({ schemas, hooks }: {
+    hooks: HooksList;
+    schemas: Map<string, { item: unknown }>
+  }): Engine {
+    const type_registry = new TypeRegistry([]);
+    const schema_graphs = new Map([...schemas.entries()].map(([id, schema]) => {
+      return [id, new SchemaGraph(id, type_registry).compile(schema.item)];
+    }));
+    return new Engine({ hooks, schemas: schema_graphs });
   }
 
   import (
