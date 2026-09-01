@@ -176,20 +176,20 @@ class Romance {
     }));
   }
 
-  async import ({ profile, rom, workspace, flags={} }: {
-    profile?: string;
+  async import ({ rom, workspace, profile, flags={} }: {
     rom: Uint8Array;
     workspace: Workspace;
-    flags?: EngineOptions;
+    profile?: string | undefined;
+    flags?: EngineOptions | undefined;
   }): Promise<Uint8Array> {
     const engine = this.#project.engine({ profile });
     return engine.import(workspace, rom, flags);
   }
 
-  async dump ({ profile, rom, flags={} }: {
-    profile?: string;
+  async dump ({ rom, profile, flags={} }: {
     rom: Uint8Array;
-    flags?: EngineOptions;
+    profile?: string | undefined;
+    flags?: EngineOptions | undefined;
   }): Promise<Workspace> {
     const engine = this.#project.engine({ profile });
     return engine.dump(rom, flags);
