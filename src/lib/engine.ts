@@ -364,7 +364,12 @@ class Engine {
 }
 
 export {
-  Engine
+  Engine,
+  RomData,
+  FormatData,
+  SessionContext,
+  ReadSession,
+  WriteSession
 };
 export type {
   FormatOutput,
