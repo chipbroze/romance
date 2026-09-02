@@ -49,6 +49,54 @@ type Manifest = {
 
 type Workspace = FormatOutput;
 
+function toManifest (input: unknown): Manifest {
+  const manifest = {
+    registry: {
+      schemas: {},
+      hooks: {}
+    },
+    profiles: {}
+  } as Manifest;
+
+  if (!input || typeof input !== 'object') {
+    throw new Error(`Manifest must be an object`);
+  }
+
+  if ('registry' in input) {
+    const registry = input.registry;
+
+    if (!registry || typeof registry !== 'object') {
+      throw new Error(`Manifest registry must be an object`);
+    }
+
+    if ('schemas' in registry) {
+      const schemas = registry.schemas;
+      if (!schemas || typeof schemas !== 'object') {
+        throw new Error(`Manifest registry schemas must be an object`);
+      }
+      Object.assign(manifest.registry.schemas, schemas);
+    }
+
+    if ('types_dir' in registry) {
+      const types_dir = registry.types_dir;
+      if (!types_dir || typeof types_dir !== 'string') {
+        throw new Error(`Manifest registry types directory must be a string path`);
+      }
+      manifest.registry.types_dir = types_dir;
+    }
+
+    if ('hooks' in registry) {
+      const hooks = registry.hooks;
+      if (!hooks || typeof hooks !== 'object') {
+        throw new Error(`Manifest registry hooks must be an object`);
+      }
+      Object.assign(manifest.registry.hooks, hooks);
+    }
+  }
+
+  return manifest;
+}
+
 function toUint8Array (buffer: Buffer): Uint8Array {
   return new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
 }
@@ -227,8 +275,8 @@ class Romance {
   }
 
   static async fromManifestPath (manifest_path: string): Promise<Romance> {
-    const manifest = await parseFile(manifest_path) as Manifest;
-    return this.fromManifest(manifest);
+    const raw_manifest = await parseFile(manifest_path);
+    return this.fromManifest(toManifest(raw_manifest));
   }
 
   static async loadRom (rom_path: string): Promise<Uint8Array> {
