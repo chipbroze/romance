@@ -39,7 +39,7 @@ class Range {
 
   static isValidArgs (args: Record<string, unknown>): args is RangeArgs {
     if (!(args.item instanceof TypeNode)) {
-      throw new Error(`Expected range item to be a TypeNode. Found ${args.item}`);
+      throw new Error(`Expected range item to be a TypeNode. Found ${JSON.stringify(args.item)}`);
     }
     if (!isUint(args.org)) {
       throw new Error(`Expected org to be uint. Found ${args.org}`);

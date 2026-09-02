@@ -16,6 +16,10 @@ import type {
   RuntimeApi
 } from './type-registry.js';
 
+const transform_target = Symbol('transform_target');
+
+type Dict = Record<string, unknown>;
+
 interface StackNode {
   name: string;
   type: string;
@@ -23,7 +27,7 @@ interface StackNode {
 
 interface StackFrame {
   node: StackNode;
-  notes: Record<string, unknown>;
+  notes: Dict;
 }
 
 class GraphRuntime {
@@ -109,7 +113,7 @@ function isNodeMeta (meta: unknown): meta is NodeMeta {
     typeof meta.type === 'string'
   );
 }
-function isRecord (obj: unknown): obj is Record<string, unknown> {
+function isRecord (obj: unknown): obj is Dict {
   return obj != null && typeof obj === 'object';
 }
 
@@ -132,16 +136,17 @@ class SchemaGraph {
   }
 
   #isNodeSpec (value: unknown): value is NodeSpec {
-    return (
+    return Boolean(
       value &&
       typeof value === 'object' &&
       '$type' in value &&
       typeof value.$type === 'string'
-    ) ? true : false;
+    );
   }
 
   compile (schema: unknown) {
     const seen = new EvilMap<NodeSpec, SchemaNode>();
+    const look = new EvilMap<Dict, SchemaNode>();
     const root = clone([schema]);
 
     transform(root, (_, value: unknown) => {
@@ -150,13 +155,17 @@ class SchemaGraph {
         if (seen.has(value)) {
           value = seen.get(value);
         } else {
-          seen.set(value, this.#compileNode(value));
+          const node = this.#compileNode(value);
+          const args = node[transform_target] as Dict;
+          seen.set(value, node);
+          look.set(args, node);
+          value = args;
         }
       }
       return value;
     }, (_, value: unknown) => {
-      return (this.#isNodeSpec(value)
-        ? seen.get(value).build(this.compile_api)
+      return (look.has(value as Dict)
+        ? look.get(value as Dict).build(this.compile_api)
         : value
       );
     });
@@ -244,13 +253,13 @@ class SchemaGraph {
 
   #node <T extends RomanceType> (
     Type: T,
-    args: Record<string, unknown>,
+    args: Dict,
     name?: string
   ) {
     return new SchemaNode<T>({ 
       name: name || '',
       Type,
-      args: validateArgs(Type, args),
+      args,
       root: this
     });
   }
@@ -258,7 +267,7 @@ class SchemaGraph {
 
 function validateArgs <T extends RomanceType> (
   Type: T,
-  args: Record<string, unknown>
+  args: Dict
 ): InputObjOf<T> {
   if (Type.isValidArgs) {
     if (!Type.isValidArgs(args)) {
@@ -276,7 +285,7 @@ class SchemaNode <Type extends RomanceType=RomanceType>
 {
   #name: string;
   #Type: Type;
-  #args: InputObjOf<Type>;
+  #args: Dict;
   #root: SchemaGraph;
   #item: RomanceTypeInstance<DataTypeOf<Type>, ReadableOf<Type>> | null;
 
@@ -296,9 +305,14 @@ class SchemaNode <Type extends RomanceType=RomanceType>
 
   build (compile_api: CompileApi) {
     if (!this.#item) {
-      this.#item = new this.#Type(this.#args, compile_api);
+      const args = validateArgs(this.#Type, this.#args);
+      this.#item = new this.#Type(args, compile_api);
     }
     return this;
+  }
+
+  get [transform_target] () {
+    return this.#args;
   }
 
   [Symbol.for('nodejs.util.inspect.custom')] () {
