@@ -12,7 +12,8 @@ const CLI_NAME = 'romance';
 
 type Dict <T = unknown> = Record<string, T>;
 type FilePath = string & { readonly __brand: "FilePath" };
-type RealPath = string & { readonly __brand: "RealPath" };
+type RealFile = string & { readonly __brand: "RealFile" };
+type RealDir = string & { readonly __brand: "RealDir" };
 type ArgValue = string | boolean;
 type CliInput = Dict<ArgValue | undefined>;
 
@@ -44,11 +45,17 @@ const parsers = {
     }
     return value as FilePath;
   }),
-  real_path: new Parser('string', (value: ArgValue): RealPath => {
+  real_file: new Parser('string', (value: ArgValue): RealFile => {
     if (!fs.statSync(String(value)).isFile()) {
-      throw new Error(`No file exists as path ${value}`);
+      throw new Error(`No file exists at path ${value}`);
     }
-    return value as RealPath;
+    return value as RealFile;
+  }),
+  real_dir: new Parser('string', (value: ArgValue): RealDir => {
+    if (!fs.statSync(String(value)).isDirectory()) {
+      throw new Error(`No directory exists at path ${value}`);
+    }
+    return value as RealDir;
   })
 };
 
@@ -149,19 +156,19 @@ const options = {
   manifest: new Option({
     name: 'manifest',
     description: 'Path to manifest file',
-    parser: parsers.real_path,
+    parser: parsers.real_file,
     letter: 'm'
   }),
   rom: new Option({
     name: 'rom',
     description: 'Path to rom file',
-    parser: parsers.real_path,
+    parser: parsers.real_file,
     letter: 'r'
   }),
   workspace: new Option({
     name: 'workspace',
     description: 'Path to workspace directory',
-    parser: parsers.real_path,
+    parser: parsers.real_dir,
     letter: 'w'
   }),
   profile: new Option({
@@ -316,11 +323,11 @@ const commands = {
       validate: bindings.optional_validate
     },
     examples: [{
-      manifest_path: './romance_manifest.yaml' as RealPath,
-      rom_path: './ff3.sfc' as RealPath,
+      manifest_path: './romance_manifest.yaml' as RealFile,
+      rom_path: './ff3.sfc' as RealFile,
       profile: 'basic'
     }, {
-      rom_path: './ff4.sfc' as RealPath,
+      rom_path: './ff4.sfc' as RealFile,
       validate: true
     }]
   }),
@@ -336,11 +343,11 @@ const commands = {
       validate: bindings.optional_validate
     },
     examples: [{
-      rom_path: './ff3.sfc' as RealPath,
-      workspace_dir: 'dump/' as RealPath,
+      rom_path: './ff3.sfc' as RealFile,
+      workspace_dir: 'dump/' as RealDir,
       validate: true
     }, {
-      rom_path: './ff4.sfc' as RealPath
+      rom_path: './ff4.sfc' as RealFile
     }]
   })
 };
