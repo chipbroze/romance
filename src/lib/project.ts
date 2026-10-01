@@ -36,14 +36,14 @@ class Project {
     this.#explicit_profiles = profiles || {};
   }
 
-  static from ({ types, schemas, hooks, profiles }: {
-    types: unknown[];
+  static from ({ codecs, schemas, hooks, profiles }: {
+    codecs: unknown[];
     schemas: Map<string, { item: unknown }>;
     hooks: Map<string, Hook>;
     profiles?: Record<string, ProfileConfig>;
   }): Project {
     return new Project({
-      typeset: new TypeRegistry(types),
+      typeset: new TypeRegistry(codecs),
       schemas: EvilMap.from(schemas),
       hooks: EvilMap.from(hooks),
       profiles: profiles

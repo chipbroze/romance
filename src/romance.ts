@@ -38,9 +38,11 @@ type HookConfig = {
 
 type HooksRegistry = Record<string, HookConfig>;
 
+type CodecRegistry = Record<string, readonly string[]>
+
 type Manifest = {
   registry: {
-    types_dir?: string;
+    codecs: CodecRegistry;
     schemas: SchemaRegistry;
     hooks: HooksRegistry;
   };
@@ -53,7 +55,8 @@ function toManifest (input: unknown): Manifest {
   const manifest = {
     registry: {
       schemas: {},
-      hooks: {}
+      hooks: {},
+      codecs: {}
     },
     profiles: {}
   } as Manifest;
@@ -77,12 +80,12 @@ function toManifest (input: unknown): Manifest {
       Object.assign(manifest.registry.schemas, schemas);
     }
 
-    if ('types_dir' in registry) {
-      const types_dir = registry.types_dir;
-      if (!types_dir || typeof types_dir !== 'string') {
-        throw new Error(`Manifest registry types directory must be a string path`);
+    if ('codecs' in registry) {
+      const codecs = registry.codecs;
+      if (!codecs || typeof codecs !== 'object') {
+        throw new Error(`Manifest registry codecs directory must be an object`);
       }
-      manifest.registry.types_dir = types_dir;
+      Object.assign(manifest.registry.codecs, codecs);
     }
 
     if ('hooks' in registry) {
@@ -118,6 +121,7 @@ async function importSchemas (
   const schemas = await Promise.all(
     Object.keys(schema_registry).map(async (name) => {
       const { from, format='yaml' } = schema_registry[name]!;
+      // TODO: Fix this inaccurate safeImport generic
       const module = await safeImport<SchemaModule>(from);
 
       if (module == null) {
@@ -158,14 +162,23 @@ async function importHooks (
   return new Map(hook_entries);
 }
 
-async function importTypes (
-  types_path?: string
-): Promise<Iterable<unknown> | null> {
-  if (!types_path) return [];
-  return readDir(types_path, getModule).then(
-    (map) => map.values(),
-    () => null
+async function importCodecs (
+  codec_registry: CodecRegistry
+): Promise<unknown[]> {
+  const codecs = await Promise.all(
+    Object.keys(codec_registry).map(async (path) => {
+      const exports = codec_registry[path]!;
+      const module = await safeImport<Record<string, unknown>>(path);
+
+      if (module == null) {
+        throw new Error(`No codec module found at "${path}"`);
+      }
+
+      return exports.map(key => module[key]);
+    })
   );
+
+  return codecs.flat().filter(Boolean);
 }
 
 class Romance {
@@ -243,14 +256,14 @@ class Romance {
     return engine.dump(rom, flags);
   }
 
-  static from ({ types, schemas, hooks, profiles }: {
-    types?: Iterable<unknown> | null;
+  static from ({ codecs, schemas, hooks, profiles }: {
+    codecs: unknown[];
     schemas: Map<string, SchemaItem>;
     hooks: Map<string, Hook>;
     profiles: ProfileRegistry;
   }): Romance {
     const project = Project.from({
-      types: Array.from(types || []),
+      codecs,
       schemas,
       hooks,
       profiles
@@ -262,12 +275,12 @@ class Romance {
   static async fromManifest (manifest: Manifest): Promise<Romance> {
     const { registry, profiles } = manifest;
 
-    const types = await importTypes(registry.types_dir);
+    const codecs = await importCodecs(registry.codecs);
     const schemas = await importSchemas(registry.schemas);
     const hooks = await importHooks(registry.hooks);
 
     return this.from({
-      types,
+      codecs,
       schemas,
       hooks,
       profiles
