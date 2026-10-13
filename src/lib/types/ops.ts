@@ -1,43 +1,149 @@
-import { Lookup, hex, AbstractPassthrough, getAtPath } from './utils.js';
-import type { Hex } from './utils.js';
-import type { ListModeConfig } from './collections.js';
+import {
+  isUint,
+  isObj,
+  isStr,
+  Lookup,
+  hex,
+  getAtPath,
+  asNode,
+  passthrough,
+  type Dict,
+  type NumDict
+} from './utils.js';
 
 import {
+  type List,
+  type ListModeSpec
+} from './collections.js';
+
+import {
+  CodecKit,
   TypeNode,
 } from '../type-registry.js';
 
 import type {
-  TypeAlias,
-  CompileApi,
-  RuntimeApi,
-  Item,
   Rom,
   datasize
 } from '../type-registry.js';
 
-// --- Component Types & Classes ---
+import type {
+  Uint
+} from './scalars.js';
 
-type RangeArgs = {
-  org: number;
-  warn?: number;
-  item: TypeNode;
-};
-
-class Range {
-  static readonly alias = 'range';
-  static readonly kind = 'unknown'; // TODO: Need to revisit "kind"
-
-  #org: Hex;
-  #end: Hex | null;
-  #item: TypeNode;
-
-  constructor ({ org, warn, item }: RangeArgs) {
-    this.#org = hex(org, 'sword');
-    this.#end = warn != null ? hex(warn, 'sword') : null;
-    this.#item = item;
+declare module '../type-registry.js' {
+  interface MasterTypeRegistry {
+    range: typeof Range;
+    modifier: typeof Modifier;
+    view: typeof View;
+    custom: typeof Custom;
+    fork: typeof Fork;
+    script: typeof Script;
+    resolver: typeof Resolver;
   }
 
-  static isValidArgs (args: Record<string, unknown>): args is RangeArgs {
+  interface CodecRules <Args=Dict> {
+    view: (Args extends ViewArgs<infer Item, infer F>
+      ? [Item['<Data>'], F]
+      : never
+    );
+    custom: (Args extends CustomArgs<infer D, infer F>
+      ? [D, F]
+      : never
+    );
+    fork: (Args extends ForkArgs<infer ControlNode, infer Options> ? [
+      ForkDataFor<ControlNode['<Data>'], Options>,
+      ForkFormattedFor<ControlNode['<Data>'], Options>
+    ] : never);
+    script: (Args extends ScriptArgs<infer ControlNode, infer Options> ? [
+      ForkDataFor<ControlNode['<Data>'], Options>[],
+      ForkFormattedFor<ControlNode['<Data>'], Options>[]
+    ] : never);
+  }
+
+  interface CodecConstraints <Args=Dict> {
+    fork: Args extends ForkArgs<infer _C, infer _O> ? Args
+      : 'ForkArgs: control and options data type mismatch';
+    resolver: Args extends ResolverArgs<infer _D, infer _F, infer _I, infer _S> ? Args
+      : 'ResolverArgs: ensure self object is typed to match toNode param';
+  }
+
+  // interface CompileApi <TypeRegistry extends object = object> {
+  //   item <
+  //     ControlNode extends TypeNode<ForkControl, unknown>,
+  //     const Options extends ForkOptions<ControlNode['<Data>']>
+  //   > (
+  //     alias: 'fork',
+  //     args: ForkArgs<ControlNode, Options>
+  //   ): TypeNode<
+  //     ForkDataFor<ControlNode['<Data>'], Options>,
+  //     ForkFormattedFor<ControlNode['<Data>'], Options>
+  //   >
+  // }
+}
+
+type CompileApi = typeof CodecKit.Complete.Api;
+type RuntimeApi = typeof CodecKit.Complete.RuntimeApi;
+/*
+const api = {} as typeof CodecKit.Complete.Api;
+const empty = {} as TypeNode<number, number>;
+const tests = {
+  fork: api.item('fork', {
+    control: empty,
+    options: [
+      { name: 'foo', match: [2], item: empty },
+      { name: 'bar', match: [3], item: empty }
+    ]
+  }),
+  custom: api.item('custom', {
+    args: { size: 'byte' },
+    construct: (args, api) => {
+      const $uint = api.item('uint', { size: args.size as datasize });
+      return {
+        decode: (rom: Rom, _api: RuntimeApi): number => {
+          return $uint.decode(rom) * 2;
+        },
+        encode: (data: number, rom: Rom, _api: RuntimeApi) => {
+          $uint.encode(data / 2, rom);
+        }
+      };
+    }
+  }),
+  resolver: api.item('resolver', {
+    self: {
+      item: {
+        $type: 'uint',
+        size: 'word'
+      }
+    } as Dict,
+    from: ['items'],
+    toNode: function (self, { items }, api) {
+      return api.item('list', {
+        item: self.item as TypeNode<number, number>,
+        mode: {
+          key: 'length',
+          arg: (items as Array<Dict>).length
+        }
+      });
+    }
+  })
+};
+
+console.log(tests);
+*/
+
+/* Range */
+
+type RangeArgs <Item extends TypeNode = TypeNode> = {
+  item: Item;
+  org: number;
+  warn?: number;
+};
+
+const Range = CodecKit.composite({
+  alias: 'range',
+  kind: 'passthrough', // TODO: Need to implement 'passthrough'
+  rule: 'item',
+  isValidArgs (args: Dict): args is RangeArgs {
     if (!(args.item instanceof TypeNode)) {
       throw new Error(`Expected range item to be a TypeNode. Found ${JSON.stringify(args.item)}`);
     }
@@ -53,388 +159,167 @@ class Range {
       }
     }
     return true;
-  }
+  },
+  construct <Item extends TypeNode> (
+    { org, warn, item }: RangeArgs<Item>
+  ) {
+    const hex_org = hex(org, 'sword');
+    const end = warn != null ? hex(warn, 'sword') : null;
+    const $item = item;
 
-  #jsr <T> (rom: Rom, func: () => T): T {
-    return rom.jsr({
-      start: +this.#org,
-      end: this.#end ? +this.#end : undefined
-    }, func);
-  }
-
-  decode (rom: Rom): unknown {
-    return this.#jsr(rom, () => this.#item.decode(rom));
-  }
-
-  encode (data: unknown, rom: Rom): void {
-    return this.#jsr(rom, () => this.#item.encode(data, rom));
-  }
-
-  format (data: unknown): unknown {
-    return this.#item.format(data);
-  }
-
-  parse (data: unknown): unknown {
-    return this.#item.parse(data);
-  }
-}
-
-/* Fork */
-
-type ForkMatchRange = { min: number; max: number };
-type ForkMatchFunction = (value: unknown) => boolean;
-type ForkMatch = number | ForkMatchRange | ForkMatchFunction;
-type ForkOption = (
-  | { subfork: ForkArgs }
-  | { item: TypeNode }
-) & (
-  | { code: number }
-  | { match: ForkMatch[] }
-);
-type ResolvedOption = ForkOption & {
-  name: string;
-};
-type ForkArgs = {
-  control: TypeNode;
-  options: Record<string, ForkOption>;
-};
-type ForkItem = {
-  name: string;
-  value: unknown;
-};
-
-class Fork {
-  static readonly alias = 'fork';
-  static readonly kind = 'object';
-
-  #control: TypeNode;
-  #fork: (value: unknown) => string;
-  #subforks: Map<string, Fork>;
-  lookup: Map<string, ResolvedOption>;
-
-  constructor ({ control, options }: ForkArgs) {
-    const [subforks, lookup] = this.#getSubforks(options);
-    this.#control = control;
-    this.#fork = this.#getFork(options);
-    this.#subforks = subforks;
-    this.lookup = lookup;
-  }
-
-  static isValidArgs (args: Record<string, unknown>): args is ForkArgs {
-    if (!(args.control instanceof TypeNode)) {
-      throw new Error(`Expected control to be a TypeNode. Found ${args.control}`);
+    function $jsr <T> (rom: Rom, func: () => T): T {
+      return rom.jsr({
+        start: +hex_org,
+        end: end ? +end : undefined
+      }, func);
     }
-    if (!isObj(args.options)) {
-      throw new Error(`Expected options to be object. Found ${args.options}`);
-    }
-    for (const option of Object.values(args.options)) {
-      if (!isObj(option)) {
-        throw new Error(`Expected option to be an object. Found ${option}`);
+
+    return CodecKit.instance<Item['<Data>'], Item['<Formatted>']>({
+      decode: (rom) => {
+        return $jsr(rom, () => $item.decode(rom));
+      },
+      encode: (data, rom) => {
+        return $jsr(rom, () => $item.encode(data, rom));
+      },
+      format: (data) => {
+        return $item.format(data);
+      },
+      parse: (data) => {
+        return $item.parse(data);
       }
-      if (!hasOnlyOne(option, ['subfork', 'item'])) {
-        throw new Error(`Option must have either "item" or "subfork"`);
-      }
-      if ('item' in option && !(option.item instanceof TypeNode)) {
-        throw new Error(`Expected option item to be a TypeNode`);
-      }
-      if (!hasOnlyOne(option, ['code', 'match'])) {
-        throw new Error(`Option must have either "code" or "match" strategy`);
-      }
-      if ('code' in option && !isUint(option.code)) {
-        throw new Error(`Expected option.code to be uint. Found ${option.code}`);
-      }
-      if ('match' in option) {
-        if (!Array.isArray(option.match)) {
-          throw new Error(`Expected option.match to be an Array`);
-        }
-        for (const match of option.match) {
-          if (!isObj(match) && !isUint(match) && typeof match !== 'function') {
-            throw new Error(`Expected match to be object, uint, or function`);
-          }
-          if (isObj(match)) {
-            for (const key of ['min', 'max']) {
-              if (!(key in match)) {
-                throw new Error(`Expected option match to have prop ${key}`);
-              }
-              if (typeof match[key] !== 'number') {
-                throw new Error(`Expected option match ${key} to be a number`);
-              }
-            }
-          }
-        }
-      }
-    }
-
-    return true;
-  }
-
-  decode (rom: Rom): ForkItem {
-    const offset = rom.offset();
-    const control_value = this.#control.decode(rom);
-    const name = this.#fork(control_value);
-    const option = this.lookup.get(name);
-
-    if (!option) {
-      throw new Error(`Option "${name}" not found in lookup`);
-    }
-
-    if (!Object.hasOwn(option, 'code')) {
-      rom.offset(offset);
-    }
-
-    if ('subfork' in option) {
-      return this.#subforks.get(name)!.decode(rom);
-    } else {
-      return { name, value: option.item.decode(rom) };
-    }
-  }
-
-  encode (data: ForkItem, rom: Rom): void {
-    const { name, value } = data;
-    const option = this.lookup.get(name);
-
-    if (!option) {
-      throw new Error(`Option "${name}" not found in lookup`);
-    }
-
-    if ('code' in option) {
-      this.#control.encode(option.code, rom);
-    }
-
-    if ('subfork' in option) {
-      return this.#subforks.get(option.name)!.encode(data, rom);
-    } else {
-      return option.item.encode(value, rom);
-    }
-  }
-
-  parse (data: string | Record<string, unknown>): ForkItem {
-    const item = typeof data === 'string' ? { [data]: undefined } : data;
-    const [name, value] = Object.entries(item)[0]!;
-    const option = this.lookup.get(name)!;
-
-    if ('subfork' in option) {
-      return this.#subforks.get(option.name)!.parse(item);
-    } else {
-      const parsed = option.item.parse(value);
-      return { name, value: parsed };
-    }
-  }
-
-  format (data: ForkItem): string | Record<string, unknown> {
-    const { name, value } = data;
-    const option = this.lookup.get(name)!;
-
-    if ('subfork' in option) {
-      return this.#subforks.get(option.name)!.format(data);
-    } else {
-      const formatted = option.item.format(value);
-      return formatted === undefined ? name : { [name]: formatted };
-    }
-  }
-
-  #getSubforks (options: Record<string, ForkOption>) {
-    const subforks = new Map<string, Fork>();
-    const lookup = new Map<string, ResolvedOption>();
-
-    for (const parent in options) {
-      const option = { ...options[parent]!, name: parent };
-      lookup.set(parent, option);
-
-      if ('subfork' in option) {
-        const subfork = new Fork(option.subfork);
-        subforks.set(parent, subfork);
-
-        for (const descendant of subfork.lookup.keys()) {
-          lookup.set(descendant, option);
-        }
-      }
-    }
-
-    return [subforks, lookup] as const;
-  }
-
-  #getFork (options: Record<string, ForkOption>) {
-    const codes = new Map<number, string>();
-    const ranges = new Map<ForkMatchRange, string>();
-    const funcs = new Map<ForkMatchFunction, string>();
-
-    for (const name in options) {
-      const option = options[name]!;
-      const matches = 'match' in option ? option.match : [option.code];
-
-      for (const match of matches) {
-        switch (typeof match) {
-          case 'number':
-            codes.set(match, name);
-            break;
-          case 'object':
-            ranges.set(match, name);
-            break;
-          case 'function':
-            funcs.set(match, name);
-            break;
-          default: {
-            throw new Error(`Invalid option match type ${typeof match}`);
-          }
-        }
-      }
-    }
-
-    return (value: unknown) => {
-      const num = value as number;
-
-      if (codes.has(num)) {
-        return codes.get(num)!;
-      }
-      for (const [range, name] of ranges) {
-        if (range.min <= num && num <= range.max) {
-          return name;
-        }
-      }
-      for (const [func, name] of funcs) {
-        if (func(value)) {
-          return name;
-        }
-      }
-      throw new Error(`No option found for control value "${value}"`);
-    };
-  }
-}
-
-type ScriptArgs = {
-  control: TypeNode;
-  options: Record<string, ForkOption>;
-} & ListModeConfig;
-
-class Script extends AbstractPassthrough<
-  Item<'list'>,
-  ForkItem[],
-  Record<string, unknown>[]
-> {
-  static readonly alias = 'script' as const;
-
-  constructor({ control, options, ...mode }: ScriptArgs, api: CompileApi) {
-    super({
-      item: api.item('list', {
-        item: api.item('fork', { control, options }),
-        ...mode
-      })
     });
   }
-}
+});
 
-type DecoratorArgs = {
-  item: TypeNode;
-  format: (data: unknown) => unknown;
-  parse: (data: unknown) => unknown;
+/* Modifier */
+
+type ModifierArgs <
+  Item extends TypeNode = TypeNode,
+  Self extends Dict = Dict
+> = {
+  item: Item;
+  self?: Self;
+  decoder: (x: Item['<Data>'], rom: Rom, api: RuntimeApi) => Item['<Data>'];
+  encoder: (x: Item['<Data>'], rom: Rom, api: RuntimeApi) => Item['<Data>'];
 };
 
-class Decorator extends AbstractPassthrough<TypeNode> {
-  static readonly alias = 'format';
-
-  #format: (data: unknown) => unknown;
-  #parse: (data: unknown) => unknown;
-
-  constructor ({ item, format, parse }: DecoratorArgs) {
-    super({ item });
-    this.#format = format;
-    this.#parse = parse;
-  }
-
-  static isValidArgs (args: Record<string, unknown>): args is DecoratorArgs {
+const Modifier = CodecKit.composite({
+  alias: 'modifier',
+  kind: 'passthrough',
+  rule: 'item',
+  isValidArgs (args: Dict): args is ModifierArgs {
     if (!(args.item instanceof TypeNode)) {
       throw new Error(`Expected item to be a TypeNode. Found ${args.item}`);
     }
-    if (typeof args.format !== 'function') {
-      throw new Error(`Expected format to be a function`);
+    if ('self' in args && !isObj(args.self)) {
+      throw new Error(`Expected self to be an object or undefined`);
     }
-    if (typeof args.parse !== 'function') {
-      throw new Error(`Expected parse to be a function`);
+    for (const key of ['decoder', 'encoder']) {
+      if (typeof args[key] !== 'function') {
+        throw new Error(`Expected ${key} to be a function`);
+      }
     }
-
     return true;
-  }
+  },
+  construct <
+    Item extends TypeNode,
+    Self extends Dict
+  > (
+    { item, self, decoder, encoder }: ModifierArgs<Item, Self>
+  ) {
+    const $self = self || {};
+    const $item = asNode(item);
 
-  override format (data: unknown): unknown {
-    return this.#format(super.format(data));
+    return CodecKit.instance<Item['<Data>'], Item['<Formatted>']>({
+      decode: (rom, api) => {
+        return decoder.call($self, $item.decode(rom), rom, api);
+      },
+      encode: (data, rom, api) => {
+        $item.encode(encoder.call($self, data, rom, api), rom);
+      },
+      format: (data) => $item.format(data),
+      parse: (data) => $item.parse(data)
+    });
   }
+});
 
-  override parse (data: unknown): unknown {
-    return super.parse(this.#parse(data));
-  }
-}
+/* View */
 
-type DecrypterArgs = {
-  item: TypeNode;
-  decrypt: (data: unknown) => unknown;
-  encrypt: (data: unknown) => unknown;
+type ViewArgs <
+  Item extends TypeNode = TypeNode,
+  F = unknown
+> = {
+  item: Item;
+  self?: Dict;
+  formatter: (data: Item['<Data>'], api: RuntimeApi) => F;
+  parser: (formatted: F, api: RuntimeApi) => Item['<Data>'];
 };
 
-class Decrypter extends AbstractPassthrough<TypeNode> {
-  static readonly alias = 'decrypt';
-
-  #decrypt: (data: unknown) => unknown;
-  #encrypt: (data: unknown) => unknown;
-
-  constructor ({ item, decrypt, encrypt }: DecrypterArgs) {
-    super({ item });
-    this.#decrypt = decrypt;
-    this.#encrypt = encrypt;
-  }
-
-  static isValidArgs (args: Record<string, unknown>): args is DecrypterArgs {
+const View = CodecKit.composite({
+  alias: 'view',
+  kind: 'passthrough',
+  rule: 'view',
+  isValidArgs (args: Dict): args is ViewArgs {
     if (!(args.item instanceof TypeNode)) {
       throw new Error(`Expected item to be a TypeNode. Found ${args.item}`);
     }
-    if (typeof args.decrypt !== 'function') {
-      throw new Error(`Expected decode to be a function`);
+    if ('self' in args && !isObj(args.self)) {
+      throw new Error(`Expected self to be an object or undefined`);
     }
-    if (typeof args.encrypt !== 'function') {
-      throw new Error(`Expected encode to be a function`);
+    for (const key of ['formatter', 'parser']) {
+      if (typeof args[key] !== 'function') {
+        throw new Error(`Expected ${key} to be a function`);
+      }
     }
-
     return true;
-  }
+  },
+  construct <
+    Item extends TypeNode,
+    Formatted
+  > (
+    { item, self, formatter, parser }: ViewArgs<Item, Formatted>
+  ) {
+    const $self = self || {};
+    const $item = asNode(item);
 
-  override decode (rom: Rom): unknown {
-    return this.#decrypt(super.decode(rom));
+    return CodecKit.instance<Item['<Data>'], Formatted>({
+      decode: (rom) => {
+        return $item.decode(rom);
+      },
+      encode: (data, rom) => {
+        $item.encode(data, rom);
+      },
+      format: (data, api) => {
+        return formatter.call($self, data, api);
+      },
+      parse: (formatted, api) => {
+        return parser.call($self, formatted, api);
+      }
+    });
   }
+});
 
-  override encode (data: unknown, rom: Rom): void {
-    return super.encode(this.#encrypt(data), rom);
+/* Custom */
+
+// "Any" here allows the fallback ArgsShape to constrain safely
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+type CustomArgs <Data = any, Formatted = Data, Input extends Dict = Dict> = {
+  args?: Input;
+  construct: (input: Input, api: CompileApi) => {
+    decode?: (rom: Rom, api: RuntimeApi) => Data;
+    encode?: (data: Data, rom: Rom, api: RuntimeApi) => void;
+    format?: (data: Data, api: RuntimeApi) => Formatted;
+    parse?: (data: Formatted, api: RuntimeApi) => Data;
   }
-}
-
-type CustomArgs = {
-  construct?: (input: unknown, api: CompileApi) => Record<string, unknown>;
-  args?: Record<string, unknown>;
-  decode?: (rom: Rom, api: RuntimeApi) => unknown;
-  encode?: (data: unknown, rom: Rom, api: RuntimeApi) => void;
-  format?: (data: unknown, api: RuntimeApi) => unknown;
-  parse?: (data: unknown, api: RuntimeApi) => unknown;
 };
 
-class Custom {
-  static readonly alias = 'custom';
-  static readonly kind = 'unknown';
-
-  #self: Record<string, unknown>;
-  #decode: NonNullable<CustomArgs['decode']>;
-  #encode: NonNullable<CustomArgs['encode']>;
-  #format: NonNullable<CustomArgs['format']>;
-  #parse: NonNullable<CustomArgs['parse']>;
-
-  constructor (input: CustomArgs, api: CompileApi) {
-    this.#self = input.construct?.(input.args, api) || {};
-    this.#decode = input.decode || Custom.noop;
-    this.#encode = input.encode || Custom.noop;
-    this.#format = input.format || Custom.noop;
-    this.#parse = input.parse || Custom.noop;
-  }
-  static isValidArgs (args: Record<string, unknown>): args is CustomArgs {
-    if (args.construct != null && args.construct !== 'function') {
-      throw new Error(`Expected construct to be null or function`);
+const Custom = CodecKit.Complete.composite({
+  alias: 'custom',
+  kind: 'unknown',
+  rule: 'custom',
+  isValidArgs (args: Dict): args is CustomArgs {
+    if (typeof args.construct !== 'function') {
+      throw new Error(`Expected construct to be a function`);
     }
     if (args.construct == null && args.args != null) {
       throw new Error(`Args only supported alongside construct() field`);
@@ -442,194 +327,431 @@ class Custom {
     if (args.args != null && !isObj(args.args)) {
       throw new Error(`Expected args to be an object`);
     }
-    for (const key of ['decode', 'encode', 'format', 'parse']) {
-      if (key in args && typeof args[key] !== 'function') {
-        throw new Error(`Expected ${key} to be undefined or a function`);
+    return true;
+  },
+  construct <Data, Formatted, Input extends Dict> (
+    input: CustomArgs<Data, Formatted, Input>,
+    api: typeof CodecKit.Complete.Api
+  ) {
+    const { construct, args } = input;
+    const $args = args || ({} as Input);
+    const { decode, encode, format, parse } = construct($args, api);
+
+    return CodecKit.Complete.instance<Data, Formatted>({
+      decode: (rom, api) => {
+        return decode?.(rom, api) || (null as Data);
+      },
+      encode: (data, rom, api) => {
+        encode?.(data, rom, api);
+      },
+      format: (data, api) => {
+        return format?.(data, api) || (null as Formatted);
+      },
+      parse: (data, api) => {
+        return parse?.(data, api) || (null as Data);
       }
-    }
-    return true;
+    });
   }
-  decode (rom: Rom, api: RuntimeApi): unknown {
-    return this.#decode.call(this.#self, rom, api);
-  }
-  encode (data: unknown, rom: Rom, api: RuntimeApi): void {
-    this.#encode.call(this.#self, data, rom, api)
-  }
-  format (data: unknown, api: RuntimeApi): unknown {
-    return this.#format.call(this.#self, data, api);
-  }
-  parse (data: unknown, api: RuntimeApi): unknown {
-    return this.#parse.call(this.#self, data, api);
-  }
-  static noop = () => {};
-}
+});
 
-type TransformerArgs = {
-  ref: string;
-  type: TypeAlias;
-  transform: (data: unknown) => unknown;
-};
+/* Fork */
 
-class Transformer {
-  static readonly alias = 'transformer';
-
-  #ref: string;
-  #type: TypeAlias;
-  #transform: (data: unknown) => unknown;
-
-  constructor({ ref, type, transform }: TransformerArgs) {
-    this.#ref = ref;
-    this.#transform = transform;
-    this.#type = type;
-  }
-
-  static isValidArgs (args: Record<string, unknown>): args is TransformerArgs {
-    if (typeof args.ref !== 'string') {
-      throw new Error(`Expected ref to be a string`);
-    }
-    if (typeof args.type !== 'string') {
-      throw new Error(`Expected type to be a string`);
-    }
-    if (typeof args.transform !== 'function') {
-      throw new Error(`Expected transform to be a function`);
-    }
-    return true;
-  }
-
-  #item (api: RuntimeApi): TypeNode {
-    return api.transform(this.#ref, api.scratch(() => {
-      return (data: unknown) => {
-        // @ts-expect-error transform() output not type-checked
-        return api.item(this.#type, this.#transform(data));
-      };
-    }));
-  }
-
-  decode (rom: Rom, api: RuntimeApi): unknown {
-    return this.#item(api).decode(rom);
-  }
-
-  encode (data: unknown, rom: Rom, api: RuntimeApi): void {
-    return this.#item(api).encode(data, rom);
-  }
-
-  parse (data: unknown, api: RuntimeApi): unknown {
-    return this.#item(api).parse(data);
-  }
-
-  format (data: unknown, api: RuntimeApi): unknown {
-    return this.#item(api).format(data);
-  }
-}
-
-type MathOp = {
-  op: 'add' | 'multiply';
-  arg: number;
-};
-
-type MathsArgs = {
-  math: MathOp[];
+type ForkControl = number | string | boolean;
+type ForkMatchRange = { min: number; max: number };
+type ForkMatchFunction = (value: unknown) => boolean;
+type ForkMatch <T> = T | ForkMatchRange | ForkMatchFunction;
+type ForkOption <ControlData extends ForkControl> = {
+  name: string;
   item: TypeNode;
+  match: ForkMatch<ControlData>[];
+  omit_control?: boolean;
+};
+type ForkOptions <
+  ControlData extends ForkControl
+> = readonly ForkOption<ControlData>[];
+
+type ForkArgs <
+  ControlNode extends TypeNode<ForkControl, unknown> =
+    TypeNode<ForkControl, unknown>,
+  Options extends ForkOptions<ControlNode['<Data>']> =
+    ForkOptions<ControlNode['<Data>']>
+> = {
+  control: ControlNode;
+  readonly options: Options;
 };
 
-class Maths extends AbstractPassthrough<TypeNode> {
-  static readonly alias = 'math';
-  static readonly kind = 'number';
+type ForkDataFor<
+  ControlData extends ForkControl,
+  Options extends ForkOptions<ControlData>
+> = {
+  [I in keyof Options]: {
+    name: Options[I]['name'];
+    value: Options[I]['item']['<Data>'];
+  };
+}[number];
 
-  #maths: MathOp[];
+type ForkFormattedFor<
+  ControlData extends ForkControl,
+  Options extends ForkOptions<ControlData>
+> = {
+  [I in keyof Options]: (Options[I]['item']['kind'] extends 'void'
+    ? Options[I]['name']
+    : Record<Options[I]['name'], Options[I]['item']['<Formatted>']>
+  );
+}[number];
 
-  constructor ({ math, item }: MathsArgs) {
-    super({ item });
-    this.#maths = math;
+const Fork = CodecKit.composite({
+  alias: 'fork',
+  kind: 'object',
+  rule: 'fork',
+  // Tranform option object into array of options with "name" field containing key
+  normalizeArgs (args) {
+    const { options: raw_options, ...rest } = args;
+    let options = isObj(raw_options) ? Object.keys(raw_options).map(name => {
+      return Object.assign({ name }, raw_options[name]);
+    }) : raw_options;
+
+    if (Array.isArray(options)) {
+      options = options.map(option => {
+        const new_option = { ...option };
+        // Allow using legacy "code" alias for match
+        if ('code' in new_option && !('match' in new_option)) {
+          new_option.match = [new_option.code];
+          new_option.omit_control = true;
+          delete new_option.code;
+        }
+        // Allow specifying single match for convenience
+        if ('match' in new_option && !Array.isArray(new_option.match)) {
+          new_option.match = [new_option.match];
+        }
+        return new_option;
+      });
+    }
+
+    return { ...rest, options };
+  },
+  isValidArgs (args: Dict): args is ForkArgs {
+    if (!(args.control instanceof TypeNode)) {
+      throw new Error(`Expected control to be a TypeNode. Found ${args.control}`);
+    }
+    const control_kind = args.control.kind;
+    if (!['number', 'boolean', 'string'].includes(control_kind)) {
+      throw new Error([
+        `Expected fork control to return type: number, boolean, or string.`,
+        `Found ${control_kind}`
+      ].join(' '));
+    }
+    if (!Array.isArray(args.options)) {
+      throw new Error(`Expected options to be an array. Found ${args.options}`);
+    }
+    const names = new Set<string>();
+    for (const option of args.options) {
+      if (!isObj(option)) {
+        throw new Error(`Expected option to be an object. Found ${option}`);
+      }
+      if (!(option.item instanceof TypeNode)) {
+        throw new Error(`Expected option item to be a TypeNode`);
+      }
+      if (typeof option.name !== 'string') {
+        throw new Error(`Expected option.name to be a string`);
+      } else {
+        names.add(option.name);
+      }
+      if ('code' in option) {
+        throw new Error(`Code field should not exist on options`);
+      }
+      if (!Array.isArray(option.match)) {
+        throw new Error(`Expected option.match to be an Array`);
+      }
+      if ('omit_control' in option) {
+        if (option.match.length !== 1 || typeof option.match[0] !== control_kind) {
+          throw new Error('Omit control only allowed for single fixed match');
+        }
+      }
+      for (const match of option.match) {
+        if (!isObj(match) && typeof match !== control_kind && typeof match !== 'function') {
+          throw new Error(`Expected match to be range object, function, or to align with control`);
+        }
+        if (isObj(match)) {
+          if (control_kind !== 'number') {
+            throw new Error(`Control must return a number for option range matches`);
+          }
+          for (const key of ['min', 'max']) {
+            if (!(key in match)) {
+              throw new Error(`Expected option range match to have prop ${key}`);
+            }
+            if (typeof match[key] !== 'number') {
+              throw new Error(`Expected option match ${key} to be a number`);
+            }
+          }
+        }
+      }
+    }
+    if (names.size !== args.options.length) {
+      throw new Error(`Multiple options using same name identifier`);
+    }
+
+    return true;
+  },
+  construct <
+    ControlNode extends TypeNode<ForkControl, unknown>,
+    const Options extends ForkOptions<ControlNode['<Data>']>
+  > ({ control, options }: ForkArgs<ControlNode, Options>) {
+    type OptionLookup = {
+      [Option in Options[number] as Option['name']]: Option
+    };
+    type ControlData = ControlNode['<Data>'];
+    type OptionName = Options[number]['name'];
+    type ForkData = ForkDataFor<ControlData, Options>;
+    type ForkFormatted = ForkFormattedFor<ControlData, Options>;
+
+    const $control = control;
+    const $lookup = $getLookup(options);
+    const $fork = $getForkFunc(options);
+
+    function $getOption (name: OptionName, api: RuntimeApi) {
+      api.trace('fork_option', name);
+      const option = $lookup[name];
+      if (!option) {
+        throw new Error(`Option "${name}" not found in lookup`);
+      }
+      return option as Options[number];
+    }
+
+    function $getLookup (options: Options) {
+      return Object.fromEntries(options.map(option => {
+        return [option.name, option];
+      })) as OptionLookup;
+    }
+
+    function $getForkFunc (options: Options) {
+      const codes = new Map<ControlData, string>();
+      const ranges = new Map<ForkMatchRange, string>();
+      const funcs = new Map<ForkMatchFunction, string>();
+
+      for (const { name, match: matches } of options) {
+        for (const match of matches) {
+          switch (typeof match) {
+            case 'object':
+              ranges.set(match, name);
+              break;
+            case 'function':
+              funcs.set(match, name);
+              break;
+            default: {
+              codes.set(match, name);
+            }
+          }
+        }
+      }
+
+      return (value: ControlData): OptionName => {
+        if (codes.has(value)) {
+          return codes.get(value)!;
+        }
+        for (const [range, name] of ranges) {
+          const num = value as number;
+          if (range.min <= num && num <= range.max) {
+            return name;
+          }
+        }
+        for (const [func, name] of funcs) {
+          if (func(value)) {
+            return name;
+          }
+        }
+        throw new Error(`No option found for control value "${value}"`);
+      };
+    }
+
+    return CodecKit.instance<ForkData, ForkFormatted>({
+      decode: (rom, api) => {
+        const offset = rom.offset();
+        const control_value = $control.decode(rom);
+        const name = $fork(control_value);
+        const option = $getOption(name, api);
+
+        if (!option.omit_control) {
+          rom.offset(offset); // Rewind cursor for decode below
+        }
+
+        return {
+          name,
+          value: option.item.decode(rom)
+        } as ForkData; // Not the best cast...
+      },
+      encode: (data, rom, api) => {
+        const { name, value } = data;
+        const option = $getOption(name, api);
+
+        if (option.omit_control) {
+          $control.encode(option.match[0] as ControlData, rom);
+        }
+
+        return option.item.encode(value, rom);
+      },
+      format: (data, api) => {
+        const { name, value } = data;
+        const option = $getOption(name, api);
+        const child = option.item.format(value);
+        return (
+          option.item.kind === 'void' ? name : { [name]: child }
+        ) as ForkFormatted; // Not the best cast...
+      },
+      parse: (data, api) => {
+        const child = isStr(data) ? { [data]: undefined } : data;
+        const [name, value] = Object.entries(child)[0]!;
+        const option = $getOption(name, api);
+        const parsed = option.item.parse(value);
+        return { name, value: parsed };
+      }
+    });
   }
+});
 
-  isValidArgs (args: Record<string, unknown>): args is MathsArgs {
-    if (!(args.item instanceof TypeNode)) {
-      throw new Error(`Expected math item to be a TypeNode. Found ${args.item}`);
-    }
-    if (!Array.isArray(args.math)) {
-      throw new Error(`Expected math to be an Array`);
-    }
-    for (const math of args.math) {
-      if (!isObj(math)) {
-        throw new Error(`Expected math entry to be an object`);
+/* Script */
+
+type ScriptArgs <
+  ControlNode extends TypeNode<ForkControl, unknown> = TypeNode<ForkControl, unknown>,
+  Options extends ForkOptions<ControlNode['<Data>']> = ForkOptions<ControlNode['<Data>']>
+> = ForkArgs<ControlNode, Options> & {
+  mode: ListModeSpec<ForkDataFor<ControlNode['<Data>'], Options>>
+};
+
+const Script = CodecKit.from<{
+  list: typeof List,
+  fork: typeof Fork
+}>().run(Kit => Kit.composite({
+  alias: 'script',
+  kind: 'array',
+  rule: 'script',
+  normalizeArgs (args: Dict) {
+    if (!args.mode) {
+      for (const key of ['eol', 'length', 'until']) {
+        if (args[key]) {
+          args = { ...args, mode: { key, arg: args[key] } };
+          break;
+        }
       }
-      if (!['add', 'multiply'].includes(math.op as string)) {
-        throw new Error(`Expected valid math op. Found ${math.op}`); 
-      }
+    }
+    return args;
+  },
+  isValidArgs (_args: Dict): _args is ScriptArgs {
+    return true;
+  },
+  construct <
+    ControlNode extends TypeNode<ForkControl, unknown>,
+    const Options extends ForkOptions<ControlNode['<Data>']>
+  > (
+    args: ScriptArgs<ControlNode, Options>,
+    api: typeof Kit.Api
+  ) {
+    const $script = api.item('list', {
+      mode: args.mode,
+      item: api.item('fork', {
+        control: args.control,
+        options: args.options
+      })
+    });
+    return passthrough($script);
+  }
+}));
+
+/* Resolver */
+// TODO: Promote Resolver alongside api.item() and improve
+
+type ResolverArgs <
+  Data = unknown,
+  Formatted = unknown,
+  From extends readonly string[] = readonly string[],
+  Self extends Dict = Dict
+> = {
+  self: Self;
+  from: From;
+  toNode: (
+    self: Self,
+    data: Record<From[number], unknown>,
+    api: RuntimeApi
+  ) => TypeNode<Data, Formatted>
+};
+
+const Resolver = CodecKit.Complete.composite({
+  alias: 'resolver',
+  kind: 'unknown',
+  rule: 'custom',
+  normalizeArgs (args) {
+    // Allow singular "from" string
+    const { from: raw_from, ...rest } = args;
+    const from = Array.isArray(raw_from) ? raw_from : [raw_from];
+    return { from, ...rest };
+  },
+  isValidArgs (args: Dict): args is ResolverArgs {
+    if (!Array.isArray(args.from) || !args.from.every(isStr)) {
+      throw new Error(`Expected from to be a string[]`);
+    }
+    if (args.self != null && !isObj(args.self)) {
+      throw new Error(`Expected "self" to be undefined, or an object`);
+    }
+    if (typeof args.toNode !== 'function') {
+      throw new Error(`Expected toNode() to be a function`);
     }
     return true;
-  }
+  },
+  construct <
+    Data,
+    Formatted,
+    From extends readonly string[],
+    Self extends Dict
+  > (
+    { self, from, toNode }: ResolverArgs<Data, Formatted, From, Self>
+  ) {
+    const $getNode = (
+      api: typeof CodecKit.Complete.RuntimeApi
+    ): TypeNode => {
+      return api.scratch(() => {
+        const data = Object.fromEntries(
+          from.map(schema_id => [schema_id, api.fetch(schema_id)])
+        ) as Record<From[number], unknown>;
 
-  override decode (rom: Rom): number {
-    let val = super.decode(rom) as number;
+        return toNode(self, data, api);
+      });
+    };
 
-    for (const { op, arg } of this.#maths) {
-      switch (op) {
-        case 'add':
-          val = val + arg;
-          break;
-        case 'multiply': {
-          val = val * arg;
-          break;
-        }
+    return CodecKit.Complete.instance<Data, Formatted>({
+      decode: (rom, api) => {
+        return $getNode(api).decode(rom) as Data;
+      },
+      encode: (data, rom, api) => {
+        $getNode(api).encode(data, rom);
+      },
+      format: (data, api) => {
+        return $getNode(api).format(data) as Formatted;
+      },
+      parse: (data, api) => {
+        return $getNode(api).parse(data) as Data;
       }
-    }
-
-    return val;
+    });
   }
+});
 
-  override encode (data: number, rom: Rom): void {
-    for (let i = this.#maths.length - 1; i >= 0; --i) {
-      const { op, arg } = this.#maths[i]!;
-
-      switch (op) {
-        case 'add':
-          data = data - arg;
-          break;
-        case 'multiply': {
-          data = Math.round(data / arg);
-          break;
-        }
-      }
-    }
-
-    return super.encode(data, rom);
-  }
-}
-
-type RefPathArgs = {
+type EntityArgs = {
   size: datasize;
-  ref: string;
-  path?: string;
-  inject?: Record<number, string>;
+  from: string;
+  path: string[];
+  inject?: NumDict<string>
 };
 
-class RefPath {
-  static readonly alias = 'ref_path';
-
-  #uint: Item<'uint'>;
-  #id: string;
-  #ref: string;
-  #path: string[];
-  #lookup: Lookup<number, string>;
-
-  constructor ({ size, ref, path, inject = {} }: RefPathArgs, api: CompileApi) {
-    this.#uint = api.item('uint', { size });
-    this.#id = [ref, path].join('|');
-    this.#ref = ref;
-    this.#path = path ? path.split('.') : [];
-    this.#lookup = Lookup.fromNumRecord(inject);
-  }
-
-  static isValidArgs (args: Record<string, unknown>): args is RefPathArgs {
-    if (typeof args.ref !== 'string') {
-      throw new Error(`Expected ref to be a string`);
+const Entity = CodecKit.from<{
+  uint: typeof Uint
+}>().simple({
+  alias: 'entity',
+  kind: 'number', // TODO: Technically, formatted is string...
+  isValidArgs (args: Dict): args is EntityArgs {
+    if (!isStr(args.from)) {
+      throw new Error(`Expected from to be a single string`);
     }
-    if (args.path != null) {
-      if (typeof args.path !== 'string') {
-        throw new Error(`Expected path to be a string. Found ${args.path}`);
-      }
+    if (!Array.isArray(args.path) || !args.path.every(isStr)) {
+      throw new Error(`Expected path to be a string[]. Found ${args.path}`);
     }
     if (args.inject != null) {
       if (!isObj(args.inject)) {
@@ -645,69 +767,77 @@ class RefPath {
       }
     }
     return true;
-  }
+  },
+  construct ({ size, from, path, inject = {} }, api) {
+    const $uint = api.item('uint', { size });
+    const $lib_id = [from, ...path].join('|');
+    const $from = from;
+    const $path = path;
+    const $lookup = Lookup.fromNumRecord(inject);
 
-  #getEnum (api: RuntimeApi) {
-    return api.transform(this.#ref, (ref_array: unknown) => {
-      const seen = new Set<string>();
-      const enum_array = (ref_array as unknown[]).map((ent, i) => {
-        const raw_value = getAtPath(ent, this.#path) as string;
-        const value = seen.has(raw_value) ? `${raw_value}[${i}]` : raw_value;
-        seen.add(value);
-        return value;
+    function $getEnum (api: RuntimeApi) {
+      return api.transform($from, (data: unknown) => {
+        if (!Array.isArray(data)) {
+          throw new Error(`Entity node expects "${$from}" data to be an array`);
+        }
+        const table = data as unknown[];
+        const seen = new Set<string>();
+        const enum_array = table.map((ent, i) => {
+          const raw_value = getAtPath(ent, $path);
+          if (!isStr(raw_value)) {
+            throw new Error(`Path ${$path} does not yield string for ${$from}`);
+          }
+          const value = (seen.has(raw_value)
+            ? `${raw_value}[${i}]`
+            : raw_value
+          );
+          seen.add(value);
+          return value;
+        });
+
+        api.setLib!($lib_id, enum_array);
+        return enum_array;
       });
-
-      api.setLib!(this.#id, enum_array);
-      return enum_array;
-    });
-  }
-
-  decode (rom: Rom) {
-    return this.#uint.decode(rom);
-  }
-
-  encode (uint: number, rom: Rom) {
-    return this.#uint.encode(uint, rom);
-  }
-
-  format (index: number, api: RuntimeApi): string {
-    if (this.#lookup.hasKey(index)) {
-      return this.#lookup.by_key(index);
-    } else {
-      return this.#getEnum(api)[index]!;
     }
+
+    return {
+      decode: (rom) => {
+        return $uint.decode(rom);
+      },
+      encode: (uint, rom) => {
+        return $uint.encode(uint, rom);
+      },
+      format: (index, api) => {
+        if ($lookup.hasKey(index)) {
+          return $lookup.byKey(index);
+        } else {
+          return $getEnum(api)[index]!;
+        }
+      },
+      parse: (value, api) => {
+        if ($lookup.hasValue(value)) {
+          return $lookup.byValue(value);
+        } else {
+          const enums = api.getLib!($lib_id) as string[];
+          return enums.indexOf(value);
+        }
+      }
+    };
   }
-
-  parse (value: string, api: RuntimeApi): number {
-    if (this.#lookup.hasValue(value)) {
-      return this.#lookup.by_value(value);
-    } else {
-      const enums = api.getLib!(this.#id)! as string[];
-      return enums.indexOf(value);
-    }
-  }
-}
-
-// Misc helpers
-
-function isUint (x: unknown): x is number {
-  return typeof x === 'number' && Number.isInteger(x) && x >= 0;
-}
-function isObj (x: unknown): x is Record<string, unknown> {
-  return x != null && typeof x === 'object';
-}
-function hasOnlyOne (obj: Record<string, unknown>, keys: string[]) {
-  return keys.filter(k => k in obj).length === 1;
-}
+});
 
 export {
   Range,
+  Modifier,
+  View,
+  Custom,
   Fork,
   Script,
-  Decorator,
-  Decrypter,
-  Custom,
-  Transformer,
-  Maths,
-  RefPath
+  Resolver,
+  Entity
+};
+
+export type {
+  ForkOptions,
+  ForkDataFor
 };

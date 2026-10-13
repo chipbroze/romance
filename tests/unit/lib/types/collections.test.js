@@ -18,7 +18,7 @@ describe('Collections', () => {
     it('handles fixed length list', () => {
       const list = api.item(List.alias, {
         item: api.item('uint', { size: 'byte' }),
-        length: 2
+        mode: { key: 'length', arg: 2 }
       });
       tester.assertType(list, {
         uints: [0x01, 0x02],
@@ -26,10 +26,10 @@ describe('Collections', () => {
       });
     });
 
-    it('handles eol terminated list', () => {
+    it('handles "eol" terminated list', () => {
       const list = api.item(List.alias, {
         item: api.item('uint', { size: 'byte' }),
-        eol: 0xFF
+        mode: { key: 'eol', arg: 0xFF }
       });
       // Decodes until it sees 0xFF, which it consumes
       tester.assertType(list, {
@@ -38,10 +38,11 @@ describe('Collections', () => {
       });
     });
 
-    it('handles end_at terminated list', () => {
+    it('handles "until" terminated list', () => {
+      const size = 'byte';
       const list = api.item(List.alias, {
-        item: api.item('uint', { size: 'byte' }),
-        end_at: 0xFF
+        item: api.item('uint', { size }),
+        mode: { key: 'until', arg: rom => rom.read(size) === 0xFF }
       });
       tester.assertType(list, {
         uints: [0x01, 0x02],
@@ -150,13 +151,17 @@ describe('Collections', () => {
     });
   });
 
+  function list (args) {
+    return api.item('list', List.normalizeArgs(args));
+  }
+
   describe('MeltedList', () => {
     it('handles melted list', () => {
       const uint = api.item('uint', { size: 'byte' });
       const melted = api.item(MeltedList.alias, {
         fields: [
-          { name: 'a', item: api.item('list', { length: 1, item: uint }) },
-          { name: 'b', item: api.item('list', { length: 1, item: uint }) }
+          { name: 'a', item: list({ length: 1, item: uint }) },
+          { name: 'b', item: list({ length: 1, item: uint }) }
         ]
       });
 
@@ -165,31 +170,12 @@ describe('Collections', () => {
         data: [{ a: 0x01, b: 0x02 }]
       });
     });
-
-    it('handles melted list with base', () => {
-      const uint = api.item('uint', { size: 'byte' });
-      const struct = api.item('struct', {
-        fields: [{ name: 'val', item: uint }]
-      });
-      const melted = api.item(MeltedList.alias, {
-        base: 'a',
-        fields: [
-          { name: 'a', item: api.item('list', { length: 1, item: struct }) },
-          { name: 'b', item: api.item('list', { length: 1, item: uint }) }
-        ]
-      });
-
-      tester.assertType(melted, {
-        uints: [0x01, 0x02],
-        data: [{ val: 0x01, b: 0x02 }]
-      });
-    });
   });
 
   describe('SegmentList', () => {
     it('handles segment list', () => {
       const segment = api.item(SegmentList.alias, {
-        item: api.item('uint', { size: 'byte', foo: true }),
+        item: api.item('uint', { size: 'byte' }),
         length: 1,
         org: 0x04,
         base: 0x00,

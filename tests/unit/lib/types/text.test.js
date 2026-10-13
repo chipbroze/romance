@@ -9,7 +9,7 @@ describe('Text', () => {
   describe('TextStr', () => {
     it('handles fixed length string with padding', () => {
       const text = api.item(TextStr.alias, {
-        length: 5,
+        mode: { key: 'length', arg: 5 },
         pad: 0x00,
         table: {
           0x41: 'A',
@@ -26,7 +26,7 @@ describe('Text', () => {
 
     it('handles DTE compressed text', () => {
       const text = api.item(TextStr.alias, {
-        eol: '<end>',
+        mode: { key: 'eol', arg: '<end>' },
         table: {
           0x01: 'AB',
           0x41: 'A',
@@ -47,17 +47,21 @@ describe('Text', () => {
   describe('TextScript', () => {
     it('handles text script serialization', () => {
       const text_script = api.item(TextScript.alias, {
-        end: 'end',
-        ops: {
-          end: {
-            code: 0xFF,
-            item: api.item('empty', {})
-          },
-          pause: {
-            code: 0x01,
-            item: api.item('uint', { size: 'byte' })
-          }
+        mode: {
+          key: 'eol',
+          arg: { name: 'end', value: undefined }
         },
+        ops: [{
+          name: 'end',
+          match: [0xFF],
+          item: api.item('empty', {}),
+          omit_control: true
+        }, {
+          name: 'pause',
+          match: [0x01],
+          item: api.item('uint', { size: 'byte' }),
+          omit_control: true
+        }],
         table: {
           0x41: 'A',
           0x42: 'B'

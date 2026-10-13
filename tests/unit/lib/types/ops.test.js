@@ -2,19 +2,19 @@ import { describe, it } from '#test';
 import { TypeTester } from '#tests/helpers/type-test.js';
 import {
   Range,
-  Fork,
-  Decorator,
-  Decrypter,
-  Transformer,
-  Maths,
+  Modifier,
+  View,
   Custom,
-  RefPath
+  Fork,
+  //Script,
+  Resolver,
+  Entity
 } from '#root/lib/types/ops.js';
 
 describe('Ops', () => {
   const lib_store = new Map();
   const test_ref = [{
-    item: { value: 0x05 },
+    item: { value: '$05' },
     size: 'byte'
   }];
   const session_api = {
@@ -23,6 +23,9 @@ describe('Ops', () => {
     },
     setLib: (id, val) => {
       lib_store.set(id, val);
+    },
+    fetch: (ref) => {
+      return ref === 'test_ref' ? test_ref : null;
     },
     transform: (ref, fn) => {
       return ref === 'test_ref' && fn(test_ref);
@@ -36,10 +39,10 @@ describe('Ops', () => {
     it('handles basic control flow', () => {
       const fork = api.item(Fork.alias, {
         control: uint8,
-        options: {
-          'A': { code: 0x01, item: uint8 },
-          'B': { code: 0x02, item: uint8 }
-        }
+        options: [
+          { name: 'A', match: [0x01], omit_control: true, item: uint8 },
+          { name: 'B', match: [0x02], omit_control: true, item: uint8 }
+        ]
       });
 
       tester.assertType(fork, {
@@ -50,29 +53,27 @@ describe('Ops', () => {
     });
   });
 
-  describe('Maths', () => {
-    it('handles chained operations', () => {
-      const math = api.item(Maths.alias, {
+  describe('View', () => {
+    it('handles custom formatting/parsing', () => {
+      const dec = api.item(View.alias, {
         item: uint8,
-        math: [
-          { op: 'add', arg: 5 },
-          { op: 'multiply', arg: 2 }
-        ]
+        formatter: (data) => `val:${data}`,
+        parser: (data) => parseInt(data.split(':')[1])
       });
 
-      tester.assertType(math, {
-        uints: [0x00],
-        data: 10
+      tester.assertType(dec, {
+        uints: [0x05],
+        data: 5,
+        readable: 'val:5'
       });
     });
-  });
 
-  describe('Decorator', () => {
-    it('handles custom formatting/parsing', () => {
-      const dec = api.item(Decorator.alias, {
+    it('supports "self" state', () => {
+      const dec = api.item(View.alias, {
         item: uint8,
-        format: (data) => `val:${data}`,
-        parse: (data) => parseInt(data.split(':')[1])
+        self: { delimit: ':' },
+        formatter (data) { return `val${this.delimit}${data}`; },
+        parser (data) { return parseInt(data.split(this.delimit)[1]); }
       });
 
       tester.assertType(dec, {
@@ -83,12 +84,13 @@ describe('Ops', () => {
     });
   });
 
-  describe('Decrypter', () => {
+  describe('Modifier', () => {
     it('handles encryption/decryption hooks', () => {
-      const dec = api.item(Decrypter.alias, {
+      const dec = api.item(Modifier.alias, {
         item: uint8,
-        decrypt: (data) => data ^ 0xFF,
-        encrypt: (data) => data ^ 0xFF
+        self: { invert: 0xFF },
+        decoder (data) { return data ^ this.invert; },
+        encoder (data) { return data ^ this.invert; }
       });
 
       tester.assertType(dec, {
@@ -115,10 +117,12 @@ describe('Ops', () => {
   describe('Custom', () => {
     it('handles custom implementation', () => {
       const custom = api.item(Custom.alias, {
-        decode: () => 0xAA,
-        encode: (data, rom) => rom.write(data, 'byte'),
-        format: (data) => data.toString(16),
-        parse: (data) => parseInt(data, 16)
+        construct: () => ({
+          decode: () => 0xAA,
+          encode: (data, rom) => rom.write(data, 'byte'),
+          format: (data) => data.toString(16),
+          parse: (data) => parseInt(data, 16)
+        })
       });
 
       tester.assertType(custom, {
@@ -129,35 +133,36 @@ describe('Ops', () => {
     });
   });
 
-  describe('Transformer', () => {
-    it('handles reference transformation', () => {
-      const trans = api.item(Transformer.alias, {
-        ref: 'test_ref',
-        type: 'uint',
-        transform: rows => ({
-          size: rows[0].size || 'word'
-        })
+  describe('Resolver', () => {
+    it('handles runtime node instantiation', () => {
+      const resolver = api.item(Resolver.alias, {
+        from: ['test_ref'],
+        self: { size: 'word' },
+        toNode (self, data) {
+          const size = data.test_ref[0].size || self.size;
+          return api.item('uint', { size });
+        }
       });
 
-      tester.assertType(trans, {
+      tester.assertType(resolver, {
         uints: [0x05],
         data: 0x05
       });
     });
   });
 
-  describe('RefPath', () => {
-    it('handles path based enum lookups', () => {
-      const ref_path = api.item(RefPath.alias, {
+  describe('Entity', () => {
+    it('handles cross-schema entity references', () => {
+      const entity = api.item(Entity.alias, {
         size: 'byte',
-        ref: 'test_ref',
-        path: 'item.value'
+        from: 'test_ref',
+        path: ['item', 'value']
       });
 
-      tester.assertType(ref_path, {
+      tester.assertType(entity, {
         uints: [0x00],
         data: 0x00,
-        readable: 0x05
+        readable: '$05'
       });
     });
   });

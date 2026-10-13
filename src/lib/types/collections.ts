@@ -1,249 +1,233 @@
+import { Lookup, type Dict, isUint } from './utils.js';
 import { deepEqualTry } from '../assert.js';
-import { Lookup } from './utils.js';
-import { TypeNode, Rom } from '../type-registry.js';
-import type {
-  Item,
-  ItemData,
-  //NodeData,
-  //NodeFormat,
-  CompileApi,
-  RuntimeApi,
-  datasize
+import { Rom, type datasize } from '../rom.js';
+import type { Uint, Bool } from './scalars.js';
+import type { Custom, Range } from './ops.js';
+import {
+  CodecKit,
+  TypeNode,
+  type RuntimeApi,
 } from '../type-registry.js';
 
-const { getSize, sizeBytes } = Rom;
-
-interface ListMode {
-  ended: (list: unknown[], rom: Rom) => boolean;
-  valid?: (list: unknown[], rom: Rom) => unknown[] | null;
-}
-
-type ListModeConfig =
-  | { length: number }
-  | { eol: unknown }
-  | { end_at: unknown | unknown[] }
-  | { custom: ListMode };
-
-type ListArgs = {
-  item: TypeNode;
-} & ListModeConfig;
-
-class List {
-  static readonly alias = 'list';
-  static readonly kind = 'array';
-
-  item: TypeNode;
-  ended: ListMode['ended'];
-  valid: NonNullable<ListMode['valid']>;
-
-  static modes = {
-    length: (length: number): ListMode => ({
-      ended: (list) => list.length === length
-    }),
-    eol: (arg: unknown): ListMode => ({
-      valid: (list) => list.concat(arg),
-      ended: (list) => {
-        const last = list[list.length - 1];
-        if (list.length > 0 && deepEqualTry(last, arg)) {
-          list.pop();
-          return true;
-        }
-        return false;
-      }
-    }),
-    end_at: (arg: unknown): ListMode => {
-      const args = Array.isArray(arg) ? arg : [arg];
-      const maxVal = Math.max(...args.filter(a => typeof a === 'number'));
-      const size = getSize(maxVal) ?? 'byte';
-
-      return {
-        valid: (list) => list,
-        ended: (_list, rom) => {
-          const next = rom.peek(() => rom.read(size));
-          return args.some((a) =>
-            typeof a === 'function' ? a(next) : deepEqualTry(next, a)
-          );
-        },
-      };
-    },
-  };
-
-  constructor({ item, ...mode_config }: ListArgs) {
-    this.item = item;
-
-    const mode = ('custom' in mode_config
-      ? mode_config.custom
-      : this.#getMode(mode_config)
-    );
-
-    this.ended = mode.ended;
-    this.valid = mode.valid ?? (
-      (list, rom) => this.ended(list, rom) ? list : null
-    );
-  }
-
-  #getMode (mode_config: ListModeConfig): ListMode {
-    const keys = (
-      Object.keys(List.modes) as Array<keyof typeof List.modes>
-    ).filter(key => key in mode_config);
-
-    if (keys.length !== 1) {
-      throw new Error('Must specify exactly one mode for list');
-    }
-
-    const type = keys[0]!;
-    const args = (mode_config as Record<string, unknown>)[type];
-    return (
-      List.modes[type] as (a: typeof args) => ListMode
-    )(args);
-  }
-
-  #trace (i: number, api: RuntimeApi) {
-    api.trace('list_index', i.toString());
-  }
-
-  decode (rom: Rom, api: RuntimeApi): unknown[] {
-    const list = [];
-    while (!this.ended(list, rom)) {
-      this.#trace(list.length, api);
-      list.push(this.item.decode(rom));
-    }
-    return list;
-  }
-
-  encode (list: unknown[], rom: Rom, api: RuntimeApi): void {
-    const valid_list = this.valid(list, rom);
-    if (!valid_list) {
-      throw new Error('List is not terminated properly');
-    }
-
-    valid_list.forEach((value, i) => {
-      this.#trace(i, api);
-      this.item.encode(value, rom);
-    });
-  }
-
-  format (data: unknown[], api: RuntimeApi): unknown[] {
-    return data.map((item, i) => {
-      this.#trace(i, api);
-      return this.item.format(item);
-    });
-  }
-
-  parse (data: unknown[], api: RuntimeApi): unknown[] {
-    return data.map((item, i) => {
-      this.#trace(i, api);
-      return this.item.parse(item);
-    });
+declare module '../type-registry.js' {
+  interface MasterTypeRegistry {
+    list: typeof List;
+    struct: typeof Struct;
+    segment_list: typeof SegmentList;
+    split_list: typeof SplitList;
+    bitfield: typeof Bitfield;
+    bitmask: typeof Bitmask;
+    bitlist: typeof Bitlist;
+    melted_list: typeof MeltedList;
   }
 }
 
-type SegmentListArgs = {
-  item: TypeNode;
-  length: number;
-  org: number;
-  base: number;
-  warn: number;
-  size?: datasize
+declare module '../type-registry.js' {
+  interface CodecRules <Args=Dict> {
+    fields: (Args extends { readonly fields: infer Fs extends FieldTuple } ? [
+      {[F in Fs[number] as F['name']]: F['item']['<Data>'];},
+      {[F in Fs[number] as F['name']]: F['item']['<Formatted>'];}
+    ] : never);
+
+    list_list: (Args extends { item: infer I extends TypeNode }
+      ? [I['<Data>'][][], I['<Formatted>'][][]]
+      : never
+    );
+
+    split_list: (Args extends { readonly fields: infer Fs extends FieldTuple } ? [
+      SplitDataOf<Fs>[],
+      SplitFormattedOf<Fs>[]
+    ] : never);
+
+    melted_list: (Args extends {readonly fields: infer Fs extends FieldTuple } ? [
+      {[F in Fs[number] as F['name']]: ArrayItem<F['item']['<Data>']>;}[],
+      {[F in Fs[number] as F['name']]: ArrayItem<F['item']['<Formatted>']>;}[],
+    ] : never);
+  }
+}
+
+type ArrayItem <T> = (
+  T extends readonly (infer Item)[] ? Item : never
+);
+
+type ListMode <T> = {
+  inclusive: boolean;
+  until: (rom: Rom) => boolean;
+  ended: (next: T, list: T[], rom: Rom) => boolean;
+  final: (list: T[]) => T[];
+  error: (list: T[]) => string | null;
 };
 
-class SegmentList {
-  static readonly alias = 'segment_list';
-  static readonly kind = 'array';
-
-  item: TypeNode;
+type ListModeArgs <T> = {
   length: number;
-  org: number;
-  base: number;
-  warn: number;
-  pointer_list: Item<'list'>;
+  eol: T;
+  until: (rom: Rom) => boolean;
+};
 
-  constructor (
-    { item, length, org, base, warn, size }: SegmentListArgs,
-    api: CompileApi
-  ) {
-    size ??= 'word';
-    base ??= org;
+const list_modes = {
+  length: <T> (length: ListModeArgs<T>['length']): ListMode<T> => ({
+    inclusive: true,
+    until: () => false,
+    ended: (_next, list) => list.length === length - 1,
+    final: (list) => list,
+    error: (list) => (list.length === length ? null
+      : list.length < length ? `List is shorter than specified length of ${length}`
+      : list.length > length ? `List exceeds specified length of ${length}`
+      : null
+    )
+  }),
+  eol: <T> (arg: ListModeArgs<T>['eol']): ListMode<T> => ({
+    inclusive: false,
+    until: () => false,
+    ended: (next) => deepEqualTry(next, arg),
+    final: (list: T[]) => list.concat(arg),
+    error: () => null
+  }),
+  until: <T> (
+    until: ListModeArgs<T>['until']
+  ): ListMode<T> => ({
+    inclusive: false,
+    until: (rom) => rom.atEnd() || rom.peek(() => until(rom)),
+    ended: () => false,
+    final: (list) => list,
+    error: () => null
+  })
+};
 
-    this.item = item;
-    this.length = length;
-    this.org = org;
-    this.base = base;
-    this.warn = warn;
-    this.pointer_list = api.item('list', {
-      length: this.length + 1,
-      item: api.item('uint', { size })
-    });
-  }
-  decode (rom: Rom, api: RuntimeApi): unknown[][] {
-    const eols = this.pointer_list.decode(rom).map(
-      (p: unknown) => (p as ItemData<'uint'>) + this.base
-    );
-    let eol_index = 1;
-
-    const sublist = api.item('list', {
-      item: this.item,
-      custom: {
-        ended: (_list: unknown[], rom: Rom) => {
-          if (rom.offset() === eols[eol_index]) {
-            eol_index++;
-            return true; 
-          }
-          return false;
-        }
-      }
-    });
-
-    const list = api.item('range', {
-      org: this.org,
-      warn: this.warn,
-      item: api.item('list', {
-        item: sublist,
-        length: this.length
-      })
-    });
-
-    return list.decode(rom) as unknown[][];
-  }
-  encode (sublists: unknown[][], rom: Rom, api: RuntimeApi): void {
-    const eols = [this.org];
-    const sublist = api.item('list', {
-      item: this.item,
-      custom: { ended: () => true }
-    });
-    const list = api.item('range', {
-      org: this.org,
-      warn: this.warn,
-      item: api.item('list', {
-        length: this.length,
-        item: api.item('custom', {
-          encode: (data: unknown, rom: Rom) => {
-            sublist.encode(data as unknown[], rom);
-            eols.push(rom.offset());
-          }
-        })
-      })
-    });
-
-    list.encode(sublists, rom);
-    const pointers = eols.map(eol => eol - this.base);
-    return this.pointer_list.encode(pointers, rom);
-  }
-  parse (array: unknown[][]): unknown[][] {
-    return array.map(item => {
-      return item.map(subitem => this.item.parse(subitem));
-    });
-  }
-  format (list: unknown[][]): unknown[][] {
-    return list.map(item => {
-      return item.map(subitem => this.item.format(subitem));
-    });
+// NOTE: This switch statement is necessary to disambiguate the mode union
+function resolveListMode <T> (mode: ListModeSpec<T>): ListMode<T> {
+  switch (mode.key) {
+    case 'length': return list_modes.length(mode.arg);
+    case 'eol': return list_modes.eol(mode.arg);
+    case 'until': return list_modes.until(mode.arg);
   }
 }
 
-type StructField = {
-  readonly name: string;
+type ListModeSpec <Data> = {
+  [Mode in keyof ListModeArgs<Data>]: {
+    key: Mode;
+    arg: ListModeArgs<Data>[Mode];
+  };
+}[keyof ListModeArgs<Data>];
+
+type ListArgs <
+  Item extends TypeNode = TypeNode
+> = {
+  item: Item;
+  mode: ListModeSpec<Item['<Data>']>;
+};
+
+const List = CodecKit.composite({
+  alias: 'list',
+  kind: 'array',
+  rule: 'list',
+  /**
+   * Support mode specification shorthand:
+   * { length: 3 } -> { mode: { key: 'length', arg: 3 }}
+   * { eol: '<end>' } -> { mode: { key: 'eol', arg: '<end>' }}
+   */
+  normalizeArgs (args) {
+    const { item, mode, ...rest } = args;
+    let new_mode = mode;
+    if (!new_mode) {
+      const [key, arg] = Object.entries(rest)[0] || [];
+      new_mode = { key, arg };
+    }
+    return { mode: new_mode, item };
+  },
+  isValidArgs (args: Dict): args is ListArgs {
+    if (!(args.item instanceof TypeNode)) {
+      throw new Error(`Expected list.item to be a TypeNode`);
+    }
+    if (!args.mode || typeof args.mode !== 'object') {
+      throw new Error(`Expected list.mode to be an object`);
+    }
+    if (Object.keys(args.mode).length !== 2) {
+      throw new Error(`Expected exactly two mode keys`);
+    }
+    const { key, arg } = (args.mode as Dict);
+    if (typeof key !== 'string' || !Object.hasOwn(list_modes, key)) {
+      throw new Error(`Unsupported list.mode.key`);
+    }
+    switch (key) {
+      case 'length': {
+        if (!Number.isInteger(arg) || arg as number < 1) {
+          throw new Error(`Expected length to be positive integer`);
+        }
+      }
+    }
+    return true;
+  },
+  construct: <Item extends TypeNode> (
+    { item, mode }: ListArgs<Item>
+  ) => {
+    type ItemData = Item['<Data>'];
+    type ItemFormatted = Item['<Formatted>'];
+
+    const $item = item as TypeNode<ItemData, ItemFormatted>;
+    const meta = resolveListMode<ItemData>(mode);
+    const trace = (i: number, api: RuntimeApi) => {
+      api.trace('list_index', i.toString());
+    }
+
+    return CodecKit.instance<ItemData[], ItemFormatted[]>({ 
+      decode: (rom, api) => {
+        const list = [];
+
+        for (let has_ended = false; !has_ended && !meta.until(rom);) {
+          trace(list.length, api);
+          const next = $item.decode(rom);
+          has_ended = meta.ended(next, list, rom);
+          if (!has_ended || meta.inclusive) {
+            list.push(next);
+          }
+        }
+        return list;
+      },
+      encode: (raw_list, rom, api) => {
+        const list = meta.final(raw_list);
+        const error = meta.error(list);
+
+        if (error) {
+          throw new Error(error);
+        }
+
+        list.forEach((value, i) => {
+          trace(i, api);
+          $item.encode(value, rom);
+        });
+      },
+      format: (data, api) => {
+        return data.map((item, i) => {
+          trace(i, api);
+          return $item.format(item);
+        });
+      },
+      parse: (data, api) => {
+        return data.map((item, i) => {
+          trace(i, api);
+          return $item.parse(item);
+        });
+      }
+    });
+  }
+});
+
+type StructField <N extends string = string> = {
+  readonly name: N;
   readonly item: TypeNode;
+};
+type FieldTuple = readonly StructField[];
+type StructArgs <
+  Fields extends FieldTuple = FieldTuple
+> = {
+  readonly fields: Fields;
+};
+type FieldsData <Fields extends FieldTuple> = {
+  [F in Fields[number] as F['name']]: F['item']['<Data>']
+};
+type FieldsFormatted <Fields extends FieldTuple> = {
+  [F in Fields[number] as F['name']]: F['item']['<Formatted>']
 };
 
 // Return unknown Record because we aren't fully validating args yet
@@ -278,11 +262,8 @@ function normalizeFields (fields: unknown): Record<string, unknown>[] {
     return { name, item };
   }
 }
-function isUint (num: unknown): num is number {
-  return typeof num === 'number' && num >= 0 && Number.isInteger(num);
-}
 
-function isValidFields (fields: unknown): fields is StructField[] {
+function isValidFields (fields: unknown): fields is FieldTuple {
   if (!Array.isArray(fields)) {
     throw new Error(`Expected fields to be an array. Found ${fields}`);
   }
@@ -300,236 +281,211 @@ function isValidFields (fields: unknown): fields is StructField[] {
   return true;
 }
 
-type StructData = Record<string, unknown>;
-type StructArgs = {
-  fields: StructField[];
-};
-
-class Struct {
-  static readonly alias = 'struct';
-  static readonly kind = 'object';
-
-  fields: StructField[];
-  field_set: Set<string>;
-
-  constructor ({ fields }: StructArgs) {
-    this.fields = fields;
-    this.field_set = new Set(fields.map(f => f.name));
-  }
-
-  static normalizeArgs (args: Record<string, unknown>) {
+const Struct = CodecKit.composite({
+  alias: 'struct',
+  kind: 'object',
+  rule: 'fields',
+  normalizeArgs (args: Dict) {
     return {
       ...args,
       fields: normalizeFields(args.fields)
     };
-  }
-
-  static isValidArgs (args: Record<string, unknown>): args is StructArgs {
+  },
+  isValidArgs (args: Dict): args is StructArgs {
     return isValidFields(args.fields);
-  }
+  },
+  construct <
+    const Fields extends FieldTuple
+  > ({ fields }: StructArgs<Fields>) {
+    type StructData = FieldsData<Fields>;
+    type StructFormatted = FieldsFormatted<Fields>;
 
-  #trace (name: string, api: RuntimeApi) {
-    api.trace('struct_field', name);
-  }
-
-  decode (rom: Rom, api: RuntimeApi): StructData {
-    const result: Record<string, unknown> = {};
-
-    for (const { name, item } of this.fields) {
-      this.#trace(name, api);
-      result[name] = item.decode(rom);
-    }
-
-    return result;
-  }
-
-  encode (data: StructData, rom: Rom, api: RuntimeApi): void {
-    const record = data as Record<string, unknown>;
-
-    for (const key in record) {
-      if (!this.field_set.has(key)) {
-        throw new Error(`Provided unhandled field "${key}" to struct`);
+    const eachField = <R> (api: RuntimeApi, fn: (field: Fields[number]) => R) => {
+      for (const field of fields) {
+        api.trace('struct_field', field.name);
+        fn(field);
       }
-    }
-
-    for (const { name, item } of this.fields) {
-      this.#trace(name, api);
-      item.encode(record[name], rom);
-    }
-  }
-
-  format (data: StructData, api: RuntimeApi): StructData {
-    const record = data as Record<string, unknown>;
-    const result: Record<string, unknown> = {};
-
-    for (const { name, item } of this.fields) {
-      this.#trace(name, api);
-      result[name] = item.format(record[name]);
-    }
-
-    return result;
-  }
-
-  parse (data: StructData, api: RuntimeApi): StructData {
-    const record = data as Record<string, unknown>;
-    const result: Record<string, unknown> = {};
-
-    for (const { name, item } of this.fields) {
-      this.#trace(name, api);
-      result[name] = item.parse(record[name]);
-    }
-
-    return result;
-  }
-}
-
-type ArrayStructField = StructField & {
-  item: TypeNode<unknown[]>;
-};
-type SplitItem = {
-  kind: string;
-  value: unknown;
-};
-type SplitData = SplitItem[];
-type SplitFormat = unknown[];
-type SplitStruct = Record<string, unknown[]>;
-type SplitArgs = {
-  id: string,
-  fields: ArrayStructField[]
-};
-
-class SplitList {
-  static readonly alias = 'split_list';
-  static readonly kind = 'array';
-
-  readonly #id: string;
-  readonly #struct: Item<'struct'>;
-  readonly #order: string[];
-
-  constructor ({ id, fields }: SplitArgs, api: CompileApi) {
-    this.#id = id;
-    this.#struct = api.item('struct', { fields });
-    this.#order = fields.map(field => field.name);
-  }
-
-  static normalizeArgs (args: Record<string, unknown>) {
-    return {
-      fields: normalizeFields(args.fields),
-      ...args
     };
-  }
-  static isValidArgs (args: Record<string, unknown>): args is SplitArgs {
-    if (!args.id || typeof args.id !== 'string') {
-      throw new Error(`Expected unique ID. Found ${args.id}`);
-    }
-    if (!isValidFields(args.fields)) {
-      throw new Error(`Invalid fields`);
-    }
-    if (args.fields.some(field => field.item.kind !== 'array')) {
-      throw new Error(`Expected all items to be array/list types`);
-    }
 
-    return true;
-  }
+    return CodecKit.instance<StructData, StructFormatted>({
+      decode: (rom, api) => {
+        const data = {} as StructData;
 
-  #split (list: SplitData): SplitStruct {
-    const obj = Object.fromEntries(
-      this.#order.map(field => [field, [] as unknown[]])
-    );
-    list.forEach(item => {
-      obj[item!.kind]!.push(item.value);
+        eachField(api, field => {
+          data[field.name as keyof StructData] = (
+            field.item.decode(rom) as StructData[keyof StructData]
+          );
+        });
+
+        return data;
+      },
+      encode: (data, rom, api) => {
+        eachField(api, field => {
+          field.item.encode(data[field.name as keyof StructData], rom);
+        });
+      },
+      format: (data, api) => {
+        const formatted = {} as StructFormatted;
+
+        eachField(api, field => {
+          formatted[field.name as keyof StructFormatted] = (
+            field.item.format(
+              data[field.name as keyof StructData]
+            ) as StructFormatted[keyof StructFormatted]
+          );
+        });
+
+        return formatted;
+      },
+      parse: (data, api) => {
+        const parsed = {} as StructData;
+
+        eachField(api, field => {
+          parsed[field.name as keyof StructData] = (
+            field.item.parse(
+              data[field.name as keyof StructFormatted]
+            ) as StructData[keyof StructData]
+          );
+        });
+
+        return parsed;
+      }
     });
-    return obj;
   }
-  #join (obj: SplitStruct): SplitData {
-    return this.#order.flatMap(field => {
-      return obj[field]!.map(value => ({ kind: field, value }));
+});
+
+type SegmentListArgs <Item extends TypeNode = TypeNode> = {
+  item: Item;
+  length: number;
+  org: number;
+  base: number;
+  warn: number;
+  size?: datasize
+};
+
+const SegmentList = CodecKit.from<{
+  uint: typeof Uint,
+  list: typeof List,
+  custom: typeof Custom,
+  range: typeof Range
+}>().run(Kit => Kit.composite({
+  alias: 'segment_list',
+  kind: 'array',
+  rule: 'list_list',
+  isValidArgs (args: Dict): args is SegmentListArgs {
+    return args && true;
+  },
+  construct <Item extends TypeNode> (
+    { item, length, org, base, warn, size }: SegmentListArgs<Item>,
+    api: typeof Kit.Api
+  ) {
+    type ItemData = Item['<Data>'];
+    type ItemFormatted = Item['<Formatted>'];
+    const $item = item as TypeNode<ItemData, ItemFormatted>;
+
+    size ??= 'word';
+    base ??= org;
+
+    const $pointer_list = api.item('list', {
+      item: api.item('uint', { size }),
+      mode: { key: 'length', arg: length + 1 }
+    });
+
+    return Kit.instance<ItemData[][], ItemFormatted[][]>({
+      decode: (rom, api) => {
+        const eols = $pointer_list.decode(rom).map(p => p + base);
+        let eol_index = 1;
+
+        const $sublist = api.item('list', {
+          item: $item,
+          mode: {
+            key: 'until',
+            arg: (rom: Rom) => {
+              if (rom.offset() === eols[eol_index]) {
+                eol_index++;
+                return true; 
+              }
+              return false;
+            }
+          }
+        });
+
+        const $list = api.item('range', {
+          org,
+          warn,
+          item: api.item('list', {
+            item: $sublist,
+            mode: { key: 'length', arg: length }
+          })
+        });
+
+        return $list.decode(rom);
+      },
+      encode: (sublists, rom, api) => {
+        const eols = [org];
+        const sublist = api.item('list', {
+          item: $item,
+          mode: {
+            key: 'until',
+            arg: () => true
+          }
+        });
+        const list = api.item('range', {
+          org,
+          warn,
+          item: api.item('list', {
+            mode: { key: 'length', arg: length },
+            item: api.item('custom', {
+              args: {},
+              construct: () => ({
+                encode: (data: ItemData[], rom: Rom) => {
+                  sublist.encode(data, rom);
+                  eols.push(rom.offset());
+                }
+              })
+            })
+          })
+        });
+
+        list.encode(sublists, rom);
+        const pointers = eols.map(eol => eol - base);
+        return $pointer_list.encode(pointers, rom);
+      },
+      parse: (array) => {
+        return array.map(item => {
+          return item.map(subitem => $item.parse(subitem));
+        });
+      },
+      format: (list) => {
+        return list.map(item => {
+          return item.map(subitem => $item.format(subitem));
+        });
+      }
     });
   }
+}));
 
-  decode (rom: Rom): SplitData {
-    const obj = this.#struct.decode(rom) as SplitStruct;
-    return this.#join(obj);
-  }
-  encode (list: SplitData, rom: Rom): void {
-    const obj = this.#split(list);
-    return this.#struct.encode(obj, rom);
-  }
-  format (list: SplitData, api: RuntimeApi): SplitFormat {
-    const obj = this.#split(list);
-    const data = this.#struct.format(obj) as SplitStruct;
-    const lists = this.#order.map(name => data[name] as unknown[]);
-    api.setLib!(this.#id, lists.map(l => l.length));
-    return lists.flat();
-  }
-  parse (list: SplitFormat, api: RuntimeApi): SplitData {
-    const clone = list.slice();
-    const lengths = api.getLib!(this.#id) as number[];
-    const obj = lengths.reduce((obj, length, i) => {
-      const name = this.#order[i]!;
-      obj[name] = clone.splice(0, length);
-      return obj;
-    }, {} as Record<string, unknown[]>);
-
-    return this.#join(this.#struct.parse(obj) as SplitStruct);
-  }
-}
-
-type BitfieldField = {
-  readonly name: string;
-  readonly item: TypeNode;
+type BitfieldField <N extends string = string> = StructField<N> & {
   readonly mask: number;
   readonly shift?: number | null;
   readonly size?: datasize | null;
-}
-
-type BitfieldArgs = {
+};
+type BitfieldTuple = readonly BitfieldField[];
+type BitfieldArgs <
+  Fields extends BitfieldTuple = BitfieldTuple
+> = {
   size?: datasize;
-  fields: BitfieldField[];
+  readonly fields: Fields
 };
 
-class Bitfield {
-  static readonly alias = 'bitfield';
-  static readonly kind = 'number';
-
-  readonly #struct: Item<'struct'>;
-  readonly #uint: Item<'uint'>;
-  readonly #length: number;
-  readonly #masks: {
-    readonly mask: number;
-    readonly shift: number;
-    readonly size: datasize;
-    readonly uint: Item<'uint'>;
-  }[];
-
-  constructor({ size, fields }: BitfieldArgs, api: CompileApi) {
-    this.#struct = api.item('struct', { fields });
-    this.#uint = api.item('uint', {
-      size: size ?? Rom.getSize(
-        Math.max(...fields.map(f => f.mask))
-      )
-    });
-    const masks = fields.map(({ mask, shift, size }) => {
-      if (shift == null) {
-        shift = mask > 0 ? 31 - Math.clz32(mask & -mask) : 0;
-      }
-      if (size == null) {
-        size = Rom.getSize(mask >>> shift);
-      }
-      return {
-        mask,
-        shift,
-        size,
-        uint: api.item('uint', { size })
-      };
-    });
-    this.#masks = masks;
-    this.#length = masks.reduce((length, mask) => {
-      return length + Rom.sizeBytes(mask.size);
-    }, 0);
-  }
-
-  static normalizeArgs (args: Record<string, unknown>) {
+const Bitfield = CodecKit.from<{
+  uint: typeof Uint,
+  struct: typeof Struct
+}>().run(Kit => Kit.composite({
+  alias: 'bitfield',
+  kind: 'number',
+  rule: 'fields',
+  normalizeArgs (args: Dict) {
     let fields = args.fields;
 
     if (fields && typeof fields === 'object' && !Array.isArray(fields)) {
@@ -543,9 +499,8 @@ class Bitfield {
       ...args,
       fields
     };
-  }
-
-  static isValidArgs (args: Record<string, unknown>): args is BitfieldArgs {
+  },
+  isValidArgs (args: Dict): args is BitfieldArgs {
     if (!Array.isArray(args.fields)) {
       throw new Error(`Expected fields to be an array. Found ${args.fields}`);
     }
@@ -574,97 +529,225 @@ class Bitfield {
       if (!Rom.isValidSize(args.size)) {
         throw new Error(`Input.size is not valid: ${args.size}`);
       }
-      if (total_bits >= 2 ** (8 * sizeBytes(args.size))) {
+      if (total_bits >= 2 ** (8 * Rom.sizeBytes(args.size))) {
         throw new Error(`Specified size (${args.size}) cannot accommodate masks`);
       }
     }
 
     return true;
-  }
+  },
+  construct <
+    const Fields extends BitfieldTuple
+  > (
+    { size, fields }: BitfieldArgs<Fields>,
+    api: typeof Kit.Api
+  ) {
+    type BitfieldData = FieldsData<Fields>;
+    type BitfieldFormatted = FieldsFormatted<Fields>;
 
-  decode (rom: Rom): StructData {
-    const bitfield = this.#uint.decode(rom);
-
-    return rom.mount(new Uint8Array(this.#length), () => {
-      // First, write the field values to the virtual rom address
-      rom.peek(() => {
-        for (const { mask, shift, uint } of this.#masks) {
-          const bits = bitfield & mask;
-          const value = bits >>> shift;
-          uint.encode(value, rom);
-        }
-      });
-      // Then, read the values back with the full nodes
-      return this.#struct.decode(rom);
+    const $struct = api.item('struct', { fields });
+    const $uint = api.item('uint', {
+      size: size ?? Rom.getSize(
+        Math.max(...fields.map(f => f.mask))
+      )
     });
-  }
+    const masks = fields.map(({ mask, shift, size }) => {
+      if (shift == null) {
+        shift = mask > 0 ? 31 - Math.clz32(mask & -mask) : 0;
+      }
+      if (size == null) {
+        size = Rom.getSize(mask >>> shift);
+      }
+      return {
+        mask,
+        shift,
+        size,
+        uint: api.item('uint', { size })
+      };
+    });
+    const length = masks.reduce((length, mask) => {
+      return length + Rom.sizeBytes(mask.size);
+    }, 0);
 
-  encode(data: StructData, rom: Rom): void {
-    let bitfield = 0;
+    return Kit.instance<BitfieldData, BitfieldFormatted>({
+      decode: (rom) => {
+        const bitfield = $uint.decode(rom);
 
-    rom.mount(new Uint8Array(this.#length), () => {
-      rom.peek(() => {
-        this.#struct.encode(data, rom);
-      });
+        return rom.mount(new Uint8Array(length), () => {
+          // First, write the field values to the virtual rom address
+          rom.peek(() => {
+            for (const { mask, shift, uint } of masks) {
+              const bits = bitfield & mask;
+              const value = bits >>> shift;
+              uint.encode(value, rom);
+            }
+          });
+          // Then, read the values back with the full nodes
+          return $struct.decode(rom);
+        });
+      },
+      encode: (data, rom) => {
+        let bitfield = 0;
 
-      for (const { mask, shift, uint } of this.#masks) {
-        const value = uint.decode(rom);
-        const shifted = ((value << shift) & mask) >>> 0;
-        bitfield = (bitfield | shifted) >>> 0;
+        rom.mount(new Uint8Array(length), () => {
+          rom.peek(() => {
+            $struct.encode(data, rom);
+          });
+
+          for (const { mask, shift, uint } of masks) {
+            const value = uint.decode(rom);
+            const shifted = ((value << shift) & mask) >>> 0;
+            bitfield = (bitfield | shifted) >>> 0;
+          }
+        });
+
+        $uint.encode(bitfield, rom);
+      },
+      format: (data) => {
+        return $struct.format(data);
+      },
+      parse: (readable) => {
+        return $struct.parse(readable);
       }
     });
-
-    this.#uint.encode(bitfield, rom);
   }
+}));
 
-  format(data: StructData): StructData {
-    return this.#struct.format(data);
-  }
+type StructOfArrays <S extends TypeNode> = TypeNode<
+  S['<Data>'] & Dict<unknown[]>,
+  S['<Formatted>'] & Dict<unknown[]>
+>;
 
-  parse(readable: StructData): StructData {
-    return this.#struct.parse(readable);
+type ValidArrayFields <Fields extends FieldTuple> = {
+  [I in keyof Fields]: [
+    Fields[I]['item']['<Data>'],
+    Fields[I]['item']['<Formatted>'],
+    Fields[I]['item']['kind']
+  ] extends [
+    readonly unknown[],
+    readonly unknown[],
+    'array'
+  ] ? never : I
+}[keyof Fields] extends never ? Fields : never;
+
+type SplitArgs <
+  Fields extends FieldTuple = FieldTuple
+> = {
+  id: string,
+  readonly fields: ValidArrayFields<Fields>
+};
+
+type SplitFormattedOf <Fields extends FieldTuple> = (
+  Fields[number]['item']['<Formatted>']
+);
+type SplitDataOf <Fields extends FieldTuple> = {
+  [I in keyof Fields & number]: {
+    field: Fields[I]['name'];
+    value: Fields[I]['item']['<Data>'];
   }
-}
+}[number];
+
+const SplitList = CodecKit.from<{
+  struct: typeof Struct
+}>().run(Kit => Kit.composite({
+  alias: 'split_list',
+  kind: 'array',
+  rule: 'split_list',
+  normalizeArgs (args: Dict) {
+    return {
+      fields: normalizeFields(args.fields),
+      ...args
+    };
+  },
+  isValidArgs (args: Dict): args is SplitArgs {
+    if (!args.id || typeof args.id !== 'string') {
+      throw new Error(`Expected unique ID. Found ${args.id}`);
+    }
+    if (!isValidFields(args.fields)) {
+      throw new Error(`Invalid fields`);
+    }
+    if (args.fields.some(field => field.item.kind !== 'array')) {
+      throw new Error(`Expected all items to be array/list types`);
+    }
+
+    return true;
+  },
+  construct <
+    Fields extends FieldTuple
+  > (
+    { id, fields }: SplitArgs<Fields>,
+    api: typeof Kit.Api
+  ) {
+    const $id = id;
+    const _struct = api.item('struct', { fields });
+    type StructNode = StructOfArrays<typeof _struct>;
+    type StructData = StructNode['<Data>'];
+    type StructFormatted = StructNode['<Formatted>'];
+    type SplitData = SplitDataOf<Fields>;
+    const $struct = _struct as StructNode;
+    const $order = fields.map(field => field.name) as Fields[number]['name'][];
+
+    const $split = (list: SplitData[]) => {
+      const obj = Object.fromEntries(
+        $order.map(field => [field, [] as unknown[]])
+      ) as StructData;
+      list.forEach(item => {
+        obj[item.field].push(item.value);
+      });
+      return obj;
+    };
+
+    const $join = (obj: StructData): SplitData[] => {
+      return $order.flatMap(field => {
+        return (obj[field]).map(value => ({ field, value }));
+      }) as SplitData[];
+    };
+
+    return Kit.instance<SplitData[], SplitFormattedOf<Fields>[]>({
+      decode: (rom) => {
+        const obj = $struct.decode(rom);
+        return $join(obj);
+      },
+      encode: (list, rom) => {
+        const obj = $split(list);
+        return $struct.encode(obj, rom);
+      },
+      format: (list, api) => {
+        const obj = $split(list);
+        const data = $struct.format(obj);
+        const lists = $order.map(name => data[name]);
+        api.setLib!($id, lists.map(l => l.length));
+        return lists.flat();
+      },
+      parse: (list, api) => {
+        const clone = list.slice();
+        const lengths = api.getLib!($id) as number[];
+        const obj = lengths.reduce((obj, length, i) => {
+          const name = $order[i]!;
+          obj[name] = clone.splice(0, length) as StructFormatted[typeof name];
+          return obj;
+        }, {} as StructFormatted);
+
+        return $join($struct.parse(obj));
+      }
+    });
+  }
+}));
 
 type BitmaskArgs = {
   readonly flags: readonly string[];
   readonly states?: Record<number, string>;
   readonly size?: datasize;
 };
-type BitmaskData = string[] | string;
 
-class Bitmask {
-  static readonly alias = 'bitmask';
-  static readonly kind = 'array';
-
-  readonly #bitfield: Item<'bitfield'>;
-  readonly #uint: Item<'uint'>;
-  readonly #flags: readonly string[];
-  readonly #states: Lookup<number, string>;
-
-  constructor({ size, flags, states }: BitmaskArgs, api: CompileApi) {
-    this.#flags = flags;
-
-    if (size == null) {
-      size = Rom.getSize(2 ** flags.length - 1);
-    }
-
-    const bool_item = api.item('bool', {});
-    const fields = flags.map((flag, i) => {
-      return {
-        name: flag,
-        mask: 1 << i,
-        shift: i,
-        item: bool_item
-      };
-    });
-
-    this.#uint = api.item('uint', { size });
-    this.#bitfield = api.item('bitfield', { size, fields });
-    this.#states = Lookup.fromNumRecord(states || {});
-  }
-
-  static isValidArgs (args: Record<string, unknown>): args is BitmaskArgs {
+const Bitmask = CodecKit.from<{
+  uint: typeof Uint,
+  bool: typeof Bool,
+  bitfield: typeof Bitfield
+}>().run(Kit => Kit.simple({
+  alias: 'bitmask',
+  kind: 'array',
+  isValidArgs (args: Dict): args is BitmaskArgs {
     if (
       !Array.isArray(args.flags) ||
       !args.flags.every(f => typeof f === 'string')
@@ -702,89 +785,77 @@ class Bitmask {
     }
 
     return true;
-  }
-
-  decode (rom: Rom): BitmaskData {
-    const offset = rom.offset();
-    const uint = this.#uint.decode(rom);
-
-    try {
-      return this.#states.by_key(uint);
-    } catch {
-      // Ignore missing key error
-    }
-
-    const flag_obj = rom.jsr(offset, () => {
-      return this.#bitfield.decode(rom);
+  },
+  construct ({ size: _size, flags, states }: BitmaskArgs, api) {
+    const $flags = flags;
+    const size = _size ?? Rom.getSize(2 ** flags.length - 1);
+    const bool_item = api.item('bool', {});
+    const fields = flags.map((flag, i) => {
+      return {
+        name: flag,
+        mask: 1 << i,
+        shift: i,
+        item: bool_item
+      };
     });
 
-    return this.#flags.filter(
-      flag => flag_obj[flag] === true
-    );
+    const $uint = api.item('uint', { size });
+    const $bitfield = api.item('bitfield', { size, fields });
+    const $states = Lookup.fromNumRecord(states || {});
+
+    return {
+      decode: (rom) => {
+        const offset = rom.offset();
+        const uint = $uint.decode(rom);
+
+        if ($states.hasKey(uint)) {
+          return $states.by_key(uint);
+        }
+
+        const flag_obj = rom.jsr(offset, () => {
+          return $bitfield.decode(rom);
+        });
+
+        return $flags.filter(
+          flag => flag_obj[flag] === true
+        );
+      },
+      encode: (value, rom) => {
+        if (!Array.isArray(value)) {
+          const uint = $states.by_value(value);
+          $uint.encode(uint, rom);
+          return;
+        }
+
+        const flag_obj = Object.fromEntries($flags.map(
+          flag => [flag, value.includes(flag)]
+        ));
+        $bitfield.encode(flag_obj, rom);
+      },
+      format: (data) => {
+        return data;
+      },
+      parse: (data) => {
+        return data;
+      }
+    };
   }
+}));
 
-  encode (value: BitmaskData, rom: Rom): void {
-    if (!Array.isArray(value)) {
-      const uint = this.#states.by_value(value);
-      this.#uint.encode(uint, rom);
-      return;
-    }
-
-    const flag_obj = Object.fromEntries(this.#flags.map(
-      flag => [flag, value.includes(flag)]
-    ));
-    this.#bitfield.encode(flag_obj, rom);
-  }
-
-  format(data: BitmaskData): BitmaskData {
-    return data;
-  }
-
-  parse(data: BitmaskData): BitmaskData {
-    return data;
-  }
-}
-
-type BitlistArgs = {
-  item: TypeNode;
+type BitlistArgs <Item extends TypeNode = TypeNode> = {
+  item: Item;
   length: number;
   bitsize: number;
-  pad?: unknown;
+  pad?: Item['<Data>'];
 }
 
-class Bitlist {
-  static readonly alias = 'bitlist';
-  static readonly kind = 'array';
-
-  readonly #length: number;
-  readonly #bitsize: number;
-  readonly #pad: unknown;
-  readonly #packed_length: number;
-  readonly #list: Item<'list'>;
-  readonly #virtual_length: number;
-  readonly #padded_length: number;
-
-  constructor ({ item, length, bitsize, pad }: BitlistArgs, api: CompileApi) {
-    this.#length = length;
-    this.#bitsize = bitsize;
-    this.#pad = pad;
-
-    const total_bits = length * bitsize;
-    const max_value = 2 ** bitsize - 1;
-    const item_size = Rom.getSize(max_value);
-    const packed_length = Math.ceil(total_bits / 8);
-    const padded_length = Math.floor((packed_length * 8) / bitsize);
-
-    this.#packed_length = packed_length;
-    this.#virtual_length = Rom.sizeBytes(item_size) * padded_length;
-    this.#padded_length = padded_length;
-    this.#list = api.item('list', {
-      length: padded_length,
-      item,
-    });
-  }
-
-  static isValidArgs (args: Record<string, unknown>): args is BitlistArgs {
+const Bitlist = CodecKit.from<{
+  list: typeof List
+}>().run(Kit => Kit.composite({
+  alias: 'bitlist',
+  kind: 'array',
+  rule: 'item',
+  isValidArgs (args: Dict): args is BitlistArgs {
     if (!isUint(args.length)) {
       throw new Error(`Bitlist length must be a positive number. Found ${args.length}`);
     }
@@ -795,48 +866,69 @@ class Bitlist {
       throw new Error('Bitlist requires an item node');
     }
     return true;
-  }
+  },
+  construct <Item extends TypeNode> (
+    { item, length, bitsize, pad }: BitlistArgs<Item>,
+    api: typeof Kit.Api
+  ) {
+    const $length = length;
+    const $bitsize = bitsize;
+    const $pad = pad;
 
-  decode (rom: Rom): unknown[] {
-    const raw_bytes = rom.slice(this.#packed_length);
-    const virtual = unpackBits(raw_bytes, this.#bitsize);
+    const total_bits = length * bitsize;
+    const max_value = 2 ** bitsize - 1;
+    const item_size = Rom.getSize(max_value);
+    const packed_length = Math.ceil(total_bits / 8);
+    const padded_length = Math.floor((packed_length * 8) / bitsize);
 
-    return rom.mount(virtual, () => {
-      const padded_list = this.#list.decode(rom);
-      const true_list = padded_list.splice(0, this.#length);
+    const $packed_length = packed_length;
+    const $virtual_length = Rom.sizeBytes(item_size) * padded_length;
+    const $padded_length = padded_length;
+    const $list = api.item('list', {
+      mode: { key: 'length', arg: padded_length },
+      item,
+    });
 
-      for (const item of padded_list) {
-        if (!deepEqualTry(item, this.#pad)) {
-          throw new Error(`Unexpected pad item ${item}`);
+    return Kit.instance<Item['<Data>'][], Item['<Formatted>'][]>({
+      decode: (rom) => {
+        const raw_bytes = rom.slice($packed_length);
+        const virtual = unpackBits(raw_bytes, $bitsize);
+
+        return rom.mount(virtual, () => {
+          const padded_list = $list.decode(rom);
+          const true_list = padded_list.splice(0, $length);
+
+          for (const item of padded_list) {
+            if (!deepEqualTry(item, $pad)) {
+              throw new Error(`Unexpected pad item ${item}`);
+            }
+          }
+          return true_list;
+        });
+      },
+      encode: (data, rom) => {
+        const items = [...data];
+        const virtual = new Uint8Array($virtual_length);
+
+        while (items.length < $padded_length) {
+          items.push($pad);
         }
+
+        rom.mount(virtual, () => {
+          $list.encode(items, rom);
+        });
+
+        rom.set(packBits(virtual, $bitsize));
+      },
+      format: (data) => {
+        return $list.format(data);
+      },
+      parse: (readable) => {
+        return $list.parse(readable);
       }
-      return true_list;
     });
   }
-
-  encode (data: unknown[], rom: Rom): void {
-    const items = [...data];
-    const virtual = new Uint8Array(this.#virtual_length);
-
-    while (items.length < this.#padded_length) {
-      items.push(this.#pad);
-    }
-
-    rom.mount(virtual, () => {
-      this.#list.encode(items, rom);
-    });
-
-    rom.set(packBits(virtual, this.#bitsize));
-  }
-
-  format (data: unknown[]): unknown[] {
-    return this.#list.format(data);
-  }
-
-  parse (readable: unknown[]): unknown[] {
-    return this.#list.parse(readable);
-  }
-}
+}));
 
 function unpackBits (
   bytes: Uint8Array | number[],
@@ -917,123 +1009,104 @@ function packBits (
   return data;
 }
 
-type MeltedStruct = Record<string, unknown[]>;
-type MeltedListArgs = {
-  base?: string;
-  fields: ArrayStructField[];
+type MeltedListArgs <
+  Fields extends FieldTuple = FieldTuple
+> = {
+  fields: ValidArrayFields<Fields>
 };
 
-class MeltedList {
-  static readonly alias = 'melted_list';
-  static readonly kind = 'array';
-
-  readonly #base: string | undefined;
-  readonly #fields: readonly ArrayStructField[];
-  readonly #struct: Item<'struct'>;
-
-  constructor ({ base, fields }: MeltedListArgs, api: CompileApi) {
-    this.#base = base;
-    this.#fields = fields;
-    this.#struct = api.item('struct', { fields });
-  }
-
-  static normalizeArgs (args: Record<string, unknown>) {
+const MeltedList = CodecKit.from<{
+  struct: typeof Struct
+}>().run(Kit => Kit.composite({
+  alias: 'melted_list',
+  kind: 'array',
+  rule: 'melted_list',
+  normalizeArgs (args: Dict) {
     return {
       ...args,
       fields: normalizeFields(args.fields)
     };
-  }
-
-  static isValidArgs (args: Record<string, unknown>): args is MeltedListArgs {
+  },
+  isValidArgs (args: Dict): args is MeltedListArgs {
     if (!isValidFields(args.fields)) {
       throw new Error(`Invalid fields`);
     }
-    if (args.base != null) {
-      if (args.fields.every(field => field.name !== args.base)) {
-        throw new Error(`MeltedList expects 'base' to be a field name. Found ${args.base}`);
-      }
-      if (args.fields.some(field => field.item.kind !== 'array')) {
-        throw new Error(`Meltedlist fields must all decode to arrays`);
-      }
+    if (args.fields.some(field => field.item.kind !== 'array')) {
+      throw new Error(`Meltedlist fields must all decode to arrays`);
     }
     return true;
-  }
+  },
+  construct <
+    Fields extends FieldTuple
+  > (
+    { fields }: MeltedListArgs<Fields>,
+    api: typeof Kit.Api
+  ) {
+    const $fields = fields;
+    const _struct = api.item('struct', { fields });
+    type StructNode = StructOfArrays<typeof _struct>;
+    type StructData = StructNode['<Data>'];
+    type StructFormatted = StructNode['<Formatted>'];
+    const $struct = _struct as StructNode;
 
-  #melt (list: StructData[]): MeltedStruct {
-    const cloned_list = list.map(item => ({ ...item }));
-    const data: MeltedStruct = {};
+    type Melted <StructType extends StructData | StructFormatted> = {
+      [K in keyof StructType]: ArrayItem<StructType[K]>;
+    }[];
 
-    if (this.#base) {
-      data[this.#base] = cloned_list;
-    }
+    const $melt = <
+      StructType extends StructData | StructFormatted
+    > (list: Melted<StructType>) => {
+      return Object.fromEntries($fields.map(field => {
+        const field_values = list.map(item => item[field.name]);
+        // TODO: Protect against accidental undefined internal values
+        return [field.name, field_values.filter(x => x !== undefined)];
+      })) as StructType;
+    };
 
-    for (const field of this.#fields) {
-      if (field.name !== this.#base) {
-        const field_values = [];
+    const $freeze = <
+      StructType extends StructData | StructFormatted
+    > (data: StructType) => {
+      const lengths = $fields.map(field => data[field.name]!.length);
+      const length = Math.max(...lengths);
 
-        for (const item of cloned_list) {
-          if (field.name in item) {
-            field_values.push(item[field.name]);
-            delete item[field.name];
-          }
-        }
+      return Array.from({ length }, (_, i) => {
+        return Object.fromEntries($fields.flatMap(field => {
+          const field_data = data[field.name]!;
+          return field_data.length > i ? [[
+            field.name,
+            data[field.name]![i]
+          ]] : [];
+        }));
+      }) as Melted<StructType>;
+    };
 
-        data[field.name] = field_values;
+    return Kit.instance<Melted<StructData>, Melted<StructFormatted>>({
+      decode: (rom) => {
+        const data = $struct.decode(rom);
+        return $freeze(data);
+      },
+      encode: (list, rom) => {
+        const data = $melt(list);
+        $struct.encode(data, rom);
+      },
+      format: (data) => {
+        const melted = $melt(data);
+        const formatted = $struct.format(melted);
+        return $freeze(formatted);
+      },
+      parse: (readable) => {
+        const melted = $melt(readable);
+        const parsed = $struct.parse(melted);
+        return $freeze(parsed);
       }
-    }
-
-    return data;
+    });
   }
-
-  #freeze (data: MeltedStruct): StructData[] {
-    const list: StructData[] = [];
-
-    for (const field of this.#fields) {
-      const field_values = data[field.name]!;
-
-      if (field.name === this.#base) {
-        field_values.forEach((item, i) => {
-          if (!list[i]) list[i] = {};
-          Object.assign(list[i], item);
-        });
-      } else {
-        field_values.forEach((value, i) => {
-          if (!list[i]) list[i] = {};
-          list[i][field.name] = value;
-        });
-      }
-    }
-
-    return list;
-  }
-
-  decode (rom: Rom): StructData[] {
-    const data = this.#struct.decode(rom) as MeltedStruct;
-    return this.#freeze(data);
-  }
-
-  encode (list: StructData[], rom: Rom): void {
-    const data = this.#melt(list);
-    this.#struct.encode(data, rom);
-  }
-
-  format (data: StructData[]): StructData[] {
-    const melted = this.#melt(data);
-    const formatted = this.#struct.format(melted) as MeltedStruct;
-    return this.#freeze(formatted);
-  }
-
-  parse (readable: StructData[]): StructData[] {
-    const melted = this.#melt(readable);
-    const parsed = this.#struct.parse(melted) as MeltedStruct;
-    return this.#freeze(parsed);
-  }
-}
+}));
 
 export {
   List,
-  SegmentList,
   Struct,
+  SegmentList,
   SplitList,
   Bitfield,
   Bitmask,
@@ -1042,5 +1115,5 @@ export {
 };
 
 export type {
-  ListModeConfig
+  ListModeSpec
 };
