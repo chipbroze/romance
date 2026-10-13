@@ -186,6 +186,11 @@ class Rom {
     }
   }
 
+  // Public method for checking if we are at the end of the current frame
+  atEnd (): boolean {
+    return Boolean(this.#state.checkBounds(1));
+  }
+
   #mapTo (offset: number) {
     return this.#mapper.mapTo(offset);
   }
