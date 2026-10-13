@@ -33,6 +33,7 @@
   },
   "homepage": "https://github.com/chipbroze/romance#readme",
   "dependencies": {
+    "valibot": "^1.5.0",
     "yaml": "^2.3.4"
   },
   "devDependencies": {
