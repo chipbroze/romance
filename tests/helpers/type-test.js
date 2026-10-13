@@ -1,4 +1,5 @@
 import assert from 'node:assert';
+import '#root/lib/types.js';
 import { Rom } from '#root/lib/rom.js';
 import { SchemaGraph } from '#root/lib/schema-graph.js';
 import { TypeRegistry } from '#root/lib/type-registry.js';

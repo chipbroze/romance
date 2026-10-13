@@ -1,5 +1,6 @@
 import assert from 'node:assert';
 import { describe, it } from '#test';
+import '#root/lib/types.js';
 import { TypeRegistry } from '#root/lib/type-registry.js';
 import { SchemaGraph } from '#root/lib/schema-graph.js';
 import {
@@ -14,14 +15,18 @@ import {
 // --- Helpers ---
 
 function createMockGraph (id, methods = {}) {
-  class MockType {
-    static alias = id;
-    decode (rom) { return methods.decode?.(rom); }
-    encode (val, rom) { return methods.encode?.(val, rom); }
-    format (val) { return methods.format?.(val); }
-    parse (val) { return methods.parse?.(val); }
+  const MockCodec = {
+    alias: id,
+    construct () {
+      return {
+        decode: (rom) => methods.decode?.(rom),
+        encode: (val, rom) => methods.encode?.(val, rom),
+        format: (val) => methods.format?.(val),
+        parse: (val) => methods.parse?.(val)
+      }
+    }
   }
-  const registry = new TypeRegistry([MockType]);
+  const registry = new TypeRegistry([MockCodec]);
   return new SchemaGraph(id, registry).compile({ $type: id, $name: id });
 }
 

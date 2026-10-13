@@ -1,14 +1,17 @@
 import assert from 'node:assert';
 import { describe, it } from '#test';
+import '#root/lib/types.js';
 import { SchemaGraph, SchemaNode } from '#root/lib/schema-graph.js';
 
 describe('SchemaGraph', () => {
-  class MethodName {
-    static alias = 'method_name';
-    decode () { return 'decoded'; }
-    encode () { return 'encoded'; }
-    format () { return 'formatted'; }
-    parse () { return 'parsed'; }
+  const MethodName = {
+    alias: 'method_name',
+    construct: () => ({
+      decode () { return 'decoded'; },
+      encode () { return 'encoded'; },
+      format () { return 'formatted'; },
+      parse () { return 'parsed'; }
+    })
   }
 
   const mock_typeset = {
