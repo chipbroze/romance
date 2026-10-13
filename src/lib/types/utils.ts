@@ -4,9 +4,11 @@ import { Rom } from '../rom.js';
 import type {
   datasize,
   TypeNode,
-  NodeData,
-  NodeFormat
+  RomanceTypeInstance
 } from '../type-registry.js';
+
+type Dict <V = unknown> = Record<string, V>;
+type NumDict <V = unknown> = Record<number, V>;
 
 class Hex {
   #value: number | null;
@@ -52,6 +54,10 @@ class Lookup <K, V> {
   #lookup = new Map<K, V>();
   #invert = new Map<V, K>();
 
+  // TODO: Remove these deprecated method aliases
+  by_key = this.byKey.bind(this);
+  by_value = this.byValue.bind(this);
+
   constructor(entries?: Iterable<readonly [K, V]>) {
     if (entries) {
       for (const [key, value] of entries) {
@@ -84,11 +90,11 @@ class Lookup <K, V> {
     return this.#invert.has(value);
   }
 
-  by_key (key: K, to_value?: (key: K) => V): V {
+  byKey (key: K, to_value?: (key: K) => V): V {
     return this.#by(key, this.#lookup, 'Key', to_value);
   }
 
-  by_value (value: V, to_key?: (value: V) => K): K {
+  byValue (value: V, to_key?: (value: V) => K): K {
     return this.#by(value, this.#invert, 'Value', to_key);
   }
 
@@ -103,30 +109,6 @@ class Lookup <K, V> {
   }
 }
 
-abstract class AbstractPassthrough <
-  T extends TypeNode,
-  Data=NodeData<T>,
-  Formatted=NodeFormat<T>
-> {
-  #item: T;
-
-  constructor ({ item }: { item: T }) {
-    this.#item = item;
-  }
-  decode (rom: Rom): Data {
-    return this.#item.decode(rom) as unknown as Data;
-  }
-  encode (data: Data, rom: Rom): void {
-    this.#item.encode(data, rom);
-  }
-  format (data: Data): Formatted {
-    return this.#item.format(data) as unknown as Formatted;
-  }
-  parse (data: Formatted): Data {
-    return this.#item.parse(data) as unknown as Data;
-  }
-}
-
 function getAtPath (node: unknown, path: string[]) {
   if (path) {
     for (const prop of path) {
@@ -136,10 +118,44 @@ function getAtPath (node: unknown, path: string[]) {
   return node;
 }
 
+function isUint (x: unknown): x is number {
+  return typeof x === 'number' && Number.isInteger(x) && x >= 0;
+}
+function isObj (x: unknown): x is Record<string, unknown> {
+  return x != null && typeof x === 'object';
+}
+function isStr (x: unknown): x is string {
+  return typeof x === 'string';
+}
+function asNode <Item extends TypeNode> (item: Item) {
+  return item as TypeNode<Item['<Data>'], Item['<Formatted>']>;
+}
+function passthrough <Data, Formatted> (
+  node: TypeNode<Data, Formatted>
+): RomanceTypeInstance<Data, Formatted> {
+  return {
+    decode: (rom) => node.decode(rom),
+    encode: (data, rom) => node.encode(data, rom),
+    format: (data) => node.format(data),
+    parse: (data) => node.parse(data)
+  };
+}
+
+function hasOnlyOne (obj: Dict, keys: string[]) {
+  return keys.filter(k => k in obj).length === 1;
+}
+
 export {
   Hex,
   hex,
   Lookup,
-  AbstractPassthrough,
-  getAtPath
+  getAtPath,
+  isUint,
+  isStr,
+  isObj,
+  asNode,
+  passthrough,
+  hasOnlyOne,
+  type Dict,
+  type NumDict
 };
