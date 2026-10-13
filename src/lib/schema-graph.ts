@@ -3,13 +3,14 @@ import { clone, transform } from './transform.js';
 import { hex } from './types/utils.js';
 import { EvilMap } from './map-utils.js';
 import { TypeNode } from './type-registry.js';
+import './types.js'; // Ensure types are registered
 import type { Rom } from './rom.js';
 import type {
   RomanceType,
   RomanceTypeInstance,
-  InputObjOf,
-  DataTypeOf,
-  ReadableOf,
+  InputOf,
+  DataOf,
+  FormattedOf,
   TypeRegistry,
   SessionApi,
   CompileApi,
@@ -131,7 +132,9 @@ class SchemaGraph {
     this.#runtime = null;
 
     this.compile_api = {
-      item: this.#item.bind(this)
+      // We cast here because our SchemaNodes types are erased.
+      // The CompileApi contract itself handles type checking
+      item: this.#item.bind(this) as CompileApi['item']
     }
   }
 
@@ -248,15 +251,18 @@ class SchemaGraph {
       throw new Error(`Invalid or unregistered type identifier: ${type}`);
     }
 
-    return this.#typeset.get(type);
+    return this.#typeset.get(type) as RomanceType;
   }
 
-  #node <T extends RomanceType> (
-    Type: T,
-    args: Dict,
+  #node <
+    Codec extends RomanceType,
+    Args extends InputOf<Codec>
+  > (
+    Type: Codec,
+    args: Args,
     name?: string
   ) {
-    return new SchemaNode<T>({ 
+    return new SchemaNode<Codec>({ 
       name: name || '',
       Type,
       args,
@@ -265,34 +271,33 @@ class SchemaGraph {
   }
 }
 
-function validateArgs <T extends RomanceType> (
-  Type: T,
+function validateArgs (
+  Type: RomanceType,
   args: Dict
-): InputObjOf<T> {
-  if (Type.isValidArgs) {
-    if (!Type.isValidArgs(args)) {
-      throw new Error(`Invalid args for type ${Type}: ${args}`);
-    }
-    return args;
-  } else {
-    return args as InputObjOf<T>;
+): Dict {
+  if (Type.isValidArgs && !Type.isValidArgs(args)) {
+    throw new Error(`Invalid args for type ${Type}: ${args}`);
   }
+  return args;
 }
 
-class SchemaNode <Type extends RomanceType=RomanceType>
-  extends TypeNode<DataTypeOf<Type>, ReadableOf<Type>>
+class SchemaNode <
+  Type extends RomanceType = RomanceType,
+  Args extends InputOf<Type> = InputOf<Type>
+>
+  extends TypeNode<DataOf<Type, Args>, FormattedOf<Type, Args>>
   implements StackNode
 {
   #name: string;
   #Type: Type;
   #args: Dict;
   #root: SchemaGraph;
-  #item: RomanceTypeInstance<DataTypeOf<Type>, ReadableOf<Type>> | null;
+  #item: RomanceTypeInstance<DataOf<Type, Args>, FormattedOf<Type, Args>> | null;
 
   constructor ({ name, Type, args, root }: {
     name: string,
     Type: Type,
-    args: InputObjOf<Type>,
+    args: Args,
     root: SchemaGraph
   }) {
     super();
@@ -306,7 +311,9 @@ class SchemaNode <Type extends RomanceType=RomanceType>
   build (compile_api: CompileApi) {
     if (!this.#item) {
       const args = validateArgs(this.#Type, this.#args);
-      this.#item = new this.#Type(args, compile_api);
+      this.#item = this.#Type.construct(args, compile_api) as (
+        RomanceTypeInstance<DataOf<Type, Args>, FormattedOf<Type, Args>>
+      );
     }
     return this;
   }
@@ -320,8 +327,7 @@ class SchemaNode <Type extends RomanceType=RomanceType>
   }
 
   #run <RV> (func: (api: RuntimeApi) => RV) {
-    // TODO: Figure out if this "as unknown" is necessary
-    return this.#root.run(this as unknown as SchemaNode<Type>, func)
+    return this.#root.run(this, func)
   }
 
   get name () {
@@ -334,24 +340,24 @@ class SchemaNode <Type extends RomanceType=RomanceType>
     return this.#Type.kind;
   }
 
-  decode (rom: Rom): DataTypeOf<Type> {
+  decode (rom: Rom): DataOf<Type, Args> {
     return this.#run((api: RuntimeApi) => {
       api.trace('offset', hex(rom.offset(), 'sword'));
       return this.#item!.decode(rom, api);
     });
   }
-  encode (value: DataTypeOf<Type>, rom: Rom): void {
+  encode (value: DataOf<Type, Args>, rom: Rom): void {
     return this.#run((api: RuntimeApi) => {
       api.trace('offset', hex(rom.offset(), 'sword'));
       return this.#item!.encode(value, rom, api)
     });
   }
-  format (data: DataTypeOf<Type>): ReadableOf<Type> {
+  format (data: DataOf<Type, Args>): FormattedOf<Type, Args> {
     return this.#run((api: RuntimeApi) => {
       return this.#item!.format(data, api);
     });
   }
-  parse (data: ReadableOf<Type>): DataTypeOf<Type> {
+  parse (data: FormattedOf<Type, Args>): DataOf<Type, Args> {
     return this.#run((api: RuntimeApi) => {
       return this.#item!.parse(data, api);
     });
