@@ -124,6 +124,8 @@ class Rom {
   readonly #mapper: RomMapper;
   #stack: Frame[];
 
+  static datasizes = datasizes;
+
   constructor (full_buffer: Uint8Array, format: RomFormat | RomMapper) {
     const mapper = typeof format === 'string' ? Rom.#getMapper(format) : format;
     const has_header = full_buffer.byteLength >= mapper.headered_size;
