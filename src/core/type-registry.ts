@@ -32,7 +32,7 @@ interface CompileApi <
   // `extends infer Codec` forces TS to resolve lazy indexed types
   // immediately, avoiding `unknown` parameter inference in downstream codecs.
   ): (TypeRegistry[Alias] extends infer Codec
-    ? CodecNode<Codec, Args>
+    ? CodecNodeFor<Codec, Args>
     : never
   );
 };
@@ -87,11 +87,11 @@ type TupleNode <T> = (
   ? TypeNode<D, F>
   : never
 );
-type CodecNode <Codec, Args> = (
+type CodecNodeFor <Codec, Args> = (
   TupleNode<RuleTuple<Codec, Args>>
 );
 type AliasNode <Alias extends CodecAlias, Args> = (
-  CodecNode<MasterRegistry[Alias], Args>
+  CodecNodeFor<MasterRegistry[Alias], Args>
 );
 
 type RomanceTypeInstance <
