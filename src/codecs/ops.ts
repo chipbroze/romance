@@ -11,7 +11,7 @@ import {
 } from './utils.js';
 
 import * as v from './valibot.js';
-import { type Rom } from '../lib/rom.js';
+import { type Rom } from '../core/rom.js';
 
 import {
   list_mode_schema,
@@ -22,17 +22,17 @@ import {
 import {
   CodecKit,
   type TypeNode,
-} from '../lib/type-registry.js';
+} from '../core/type-registry.js';
 
 import type {
   datasize
-} from '../lib/type-registry.js';
+} from '../core/type-registry.js';
 
 import type {
   Uint
 } from './scalars.js';
 
-declare module '../lib/type-registry.js' {
+declare module '../core/type-registry.js' {
   interface MasterTypeRegistry {
     range: typeof Range;
     modifier: typeof Modifier;

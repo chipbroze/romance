@@ -1,8 +1,8 @@
 import assert from 'node:assert';
 import { describe, it } from '#test';
-import '#root/lib/types.js';
-import { TypeRegistry } from '#root/lib/type-registry.js';
-import { SchemaGraph } from '#root/lib/schema-graph.js';
+import '#root/core/types.js';
+import { TypeRegistry } from '#root/core/type-registry.js';
+import { SchemaGraph } from '#root/core/schema-graph.js';
 import {
   Engine,
   FormatData,
@@ -10,7 +10,7 @@ import {
   SessionContext,
   ReadSession,
   WriteSession
-} from '#root/lib/engine.js';
+} from '#root/core/engine.js';
 
 // --- Helpers ---
 

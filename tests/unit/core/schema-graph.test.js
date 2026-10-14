@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import { describe, it } from '#test';
-import '#root/lib/types.js';
-import { SchemaGraph, SchemaNode } from '#root/lib/schema-graph.js';
+import '#root/core/types.js';
+import { SchemaGraph, SchemaNode } from '#root/core/schema-graph.js';
 
 describe('SchemaGraph', () => {
   const MethodName = {

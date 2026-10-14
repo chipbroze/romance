@@ -1,16 +1,16 @@
 import { Lookup, type Dict } from './utils.js';
 import * as v from './valibot.js';
 import { deepEqualTry } from '../utils/assert.js';
-import { Rom, type datasize } from '../lib/rom.js';
+import { Rom, type datasize } from '../core/rom.js';
 import type { Uint, Bool } from './scalars.js';
 import type { Custom, Range } from './ops.js';
 import {
   CodecKit,
   type TypeNode,
   type RuntimeApi,
-} from '../lib/type-registry.js';
+} from '../core/type-registry.js';
 
-declare module '../lib/type-registry.js' {
+declare module '../core/type-registry.js' {
   interface MasterTypeRegistry {
     list: typeof List;
     struct: typeof Struct;

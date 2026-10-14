@@ -3,11 +3,11 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-import { Project } from './lib/project.js';
-import type { Hook, ProfileRegistry } from './lib/project.js';
-import type { FormatOutput, EngineOptions } from './lib/engine.js';
-import { file_formats, isValidFormat } from './lib/file-formats.js';
-import type { FileFormatName } from './lib/file-formats.js';
+import { Project } from './core/project.js';
+import type { Hook, ProfileRegistry } from './core/project.js';
+import type { FormatOutput, EngineOptions } from './core/engine.js';
+import { file_formats, isValidFormat } from './core/file-formats.js';
+import type { FileFormatName } from './core/file-formats.js';
 import { EvilMap } from './utils/map-utils.js';
 import {
   writePath,

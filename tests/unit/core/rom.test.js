@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { describe, it } from '#test';
-import { Rom } from '#root/lib/rom.js';
+import { Rom } from '#root/core/rom.js';
 
 describe('Rom', () => {
   // Helper to create a dummy ROM buffer

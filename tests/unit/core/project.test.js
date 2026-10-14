@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import { describe, it } from '#test';
-import '#root/lib/types.js';
-import { Project } from '#root/lib/project.js';
+import '#root/core/types.js';
+import { Project } from '#root/core/project.js';
 
 describe('Project Schema Compilation', () => {
   it('compiles and executes a simple uint schema', () => {

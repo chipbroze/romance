@@ -21,13 +21,13 @@ The `#root` import is provided to avoid `../..` backtracking from test paths.
 
 ```js
 import { it, describe } from '#test'
-import { RefPath } from '#root/lib/types.js'
+import { RefPath } from '#root/core/types.js'
 ```
 
 ### Where does my test file go?
 
 - **In-memory behavior** (isolated or multi-module, including filesystem I/O): `tests/unit/`, mirroring the source path.
-  `lib/types.js` → `tests/unit/lib/types.test.js`
+  `core/types.js` → `tests/unit/core/types.test.js`
 - **Full pipeline from a user entrypoint**: `tests/system/`
 
 ### Where do fixtures go?

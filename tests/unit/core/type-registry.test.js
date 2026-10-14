@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import { describe, it } from '#test';
-import '#root/lib/types.js';
-import { TypeRegistry } from '#root/lib/type-registry.js';
+import '#root/core/types.js';
+import { TypeRegistry } from '#root/core/type-registry.js';
 
 describe('TypeRegistry', () => {
   it('registers types with all required methods and alias', () => {
