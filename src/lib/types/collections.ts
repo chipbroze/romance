@@ -1,11 +1,12 @@
-import { Lookup, type Dict, isUint } from './utils.js';
+import { Lookup, type Dict } from './utils.js';
+import * as v from './valibot.js';
 import { deepEqualTry } from '../assert.js';
 import { Rom, type datasize } from '../rom.js';
 import type { Uint, Bool } from './scalars.js';
 import type { Custom, Range } from './ops.js';
 import {
   CodecKit,
-  TypeNode,
+  type TypeNode,
   type RuntimeApi,
 } from '../type-registry.js';
 
@@ -117,6 +118,24 @@ type ListArgs <
   mode: ListModeSpec<Item['<Data>']>;
 };
 
+const list_schema = v.object({
+  item: v.node(),
+  mode: v.union([
+    v.object({
+      key: v.literal('length'),
+      arg: v.uint()
+    }),
+    v.object({
+      key: v.literal('eol'),
+      arg: v.any()
+    }),
+    v.object({
+      key: v.literal('until'),
+      arg: v.function()
+    })
+  ])
+});
+
 const List = CodecKit.composite({
   alias: 'list',
   kind: 'array',
@@ -136,25 +155,9 @@ const List = CodecKit.composite({
     return { mode: new_mode, item };
   },
   isValidArgs (args: Dict): args is ListArgs {
-    if (!(args.item instanceof TypeNode)) {
-      throw new Error(`Expected list.item to be a TypeNode`);
-    }
-    if (!args.mode || typeof args.mode !== 'object') {
-      throw new Error(`Expected list.mode to be an object`);
-    }
-    if (Object.keys(args.mode).length !== 2) {
-      throw new Error(`Expected exactly two mode keys`);
-    }
-    const { key, arg } = (args.mode as Dict);
-    if (typeof key !== 'string' || !Object.hasOwn(list_modes, key)) {
-      throw new Error(`Unsupported list.mode.key`);
-    }
-    switch (key) {
-      case 'length': {
-        if (!Number.isInteger(arg) || arg as number < 1) {
-          throw new Error(`Expected length to be positive integer`);
-        }
-      }
+    v.assert(list_schema, args);
+    if (args.mode.key === 'length' && args.mode.arg < 1) {
+      throw new Error(`Expected length to be positive integer`);
     }
     return true;
   },
@@ -263,23 +266,16 @@ function normalizeFields (fields: unknown): Record<string, unknown>[] {
   }
 }
 
-function isValidFields (fields: unknown): fields is FieldTuple {
-  if (!Array.isArray(fields)) {
-    throw new Error(`Expected fields to be an array. Found ${fields}`);
-  }
-  for (const field of fields as Record<string, unknown>[]) {
-    if (!field || typeof field !== 'object') {
-      throw new Error(`Expected field to be an object. Found ${field}`);
-    }
-    if (typeof field.name !== 'string') {
-      throw new Error(`Expected field name to be a string. Found ${field.name}`);
-    }
-    if (!(field.item instanceof TypeNode)) {
-      throw new Error(`Expected field item to be a TypeNode. Found ${field.item}`);
-    }
-  }
-  return true;
-}
+const fields_schema = v.array(
+  v.object({
+    name: v.string(),
+    item: v.node()
+  })
+);
+
+const struct_schema = v.object({
+  fields: fields_schema
+});
 
 const Struct = CodecKit.composite({
   alias: 'struct',
@@ -292,7 +288,8 @@ const Struct = CodecKit.composite({
     };
   },
   isValidArgs (args: Dict): args is StructArgs {
-    return isValidFields(args.fields);
+    v.assert(struct_schema, args);
+    return true;
   },
   construct <
     const Fields extends FieldTuple
@@ -363,6 +360,15 @@ type SegmentListArgs <Item extends TypeNode = TypeNode> = {
   size?: datasize
 };
 
+const segment_list_schema = v.object({
+  item: v.node(),
+  length: v.uint(),
+  org: v.uint(),
+  base: v.optional(v.uint()),
+  warn: v.uint(),
+  size: v.optional(v.datasize()),
+});
+
 const SegmentList = CodecKit.from<{
   uint: typeof Uint,
   list: typeof List,
@@ -373,7 +379,8 @@ const SegmentList = CodecKit.from<{
   kind: 'array',
   rule: 'list_list',
   isValidArgs (args: Dict): args is SegmentListArgs {
-    return args && true;
+    v.assert(segment_list_schema, args);
+    return true;
   },
   construct <Item extends TypeNode> (
     { item, length, org, base, warn, size }: SegmentListArgs<Item>,
@@ -478,6 +485,19 @@ type BitfieldArgs <
   readonly fields: Fields
 };
 
+const bitfield_schema = v.object({
+  size: v.optional(v.datasize()),
+  fields: v.array(
+    v.object({
+      name: v.string(),
+      item: v.node(),
+      mask: v.uint(),
+      shift: v.optional(v.uint()),
+      size: v.optional(v.datasize()),
+    })
+  ),
+});
+
 const Bitfield = CodecKit.from<{
   uint: typeof Uint,
   struct: typeof Struct
@@ -501,18 +521,7 @@ const Bitfield = CodecKit.from<{
     };
   },
   isValidArgs (args: Dict): args is BitfieldArgs {
-    if (!Array.isArray(args.fields)) {
-      throw new Error(`Expected fields to be an array. Found ${args.fields}`);
-    }
-
-    for (const field of args.fields as Record<string, unknown>[]) {
-      if (field.shift != null && !isUint(field.shift)) {
-        throw new Error(`Expected field.shift to be number. Found ${field.shift}`);
-      }
-      if (field.size != null && !Rom.isValidSize(field.size)) {
-        throw new Error(`Field.size is not valid: ${field.size}`);
-      }
-    }
+    v.assert(bitfield_schema, args);
 
     const total_bits = args.fields.reduce((total_bits, field) => {
       if (total_bits & field.mask) {
@@ -526,9 +535,6 @@ const Bitfield = CodecKit.from<{
     }
 
     if (args.size != null) {
-      if (!Rom.isValidSize(args.size)) {
-        throw new Error(`Input.size is not valid: ${args.size}`);
-      }
       if (total_bits >= 2 ** (8 * Rom.sizeBytes(args.size))) {
         throw new Error(`Specified size (${args.size}) cannot accommodate masks`);
       }
@@ -647,6 +653,11 @@ type SplitDataOf <Fields extends FieldTuple> = {
   }
 }[number];
 
+const split_list_schema = v.object({
+  id: v.string(),
+  fields: fields_schema,
+});
+
 const SplitList = CodecKit.from<{
   struct: typeof Struct
 }>().run(Kit => Kit.composite({
@@ -660,16 +671,10 @@ const SplitList = CodecKit.from<{
     };
   },
   isValidArgs (args: Dict): args is SplitArgs {
-    if (!args.id || typeof args.id !== 'string') {
-      throw new Error(`Expected unique ID. Found ${args.id}`);
-    }
-    if (!isValidFields(args.fields)) {
-      throw new Error(`Invalid fields`);
-    }
+    v.assert(split_list_schema, args);
     if (args.fields.some(field => field.item.kind !== 'array')) {
       throw new Error(`Expected all items to be array/list types`);
     }
-
     return true;
   },
   construct <
@@ -740,6 +745,12 @@ type BitmaskArgs = {
   readonly size?: datasize;
 };
 
+const bitmask_schema = v.object({
+  flags: v.array(v.string()),
+  states: v.optional(v.num_dict(v.string())),
+  size: v.optional(v.datasize()),
+});
+
 const Bitmask = CodecKit.from<{
   uint: typeof Uint,
   bool: typeof Bool,
@@ -748,37 +759,17 @@ const Bitmask = CodecKit.from<{
   alias: 'bitmask',
   kind: 'array',
   isValidArgs (args: Dict): args is BitmaskArgs {
-    if (
-      !Array.isArray(args.flags) ||
-      !args.flags.every(f => typeof f === 'string')
-    ) {
-      throw new Error(`Expected args.flags to be an array of strings.`);
-    }
+    v.assert(bitmask_schema, args);
 
     if (args.flags.length > 32) {
-      throw new Error(`Bitmask cannot exceed 32 flags (found ${args.flags}).`);
-    }
-
-    if (args.size != null && !Rom.isValidSize(args.size)) {
-      throw new Error(`Input size is not valid: ${args.size}`);
+      throw new Error(`Bitmask cannot exceed 32 flags (found ${args.flags.length}).`);
     }
 
     if (args.states != null) {
-      if (typeof args.states !== 'object') {
-        throw new Error(`Expected args.states to be an object map.`);
-      }
-
       const max = args.size != null ? Rom.sizeCap(args.size) : Infinity;
 
-      for (const [key, value] of Object.entries(args.states)) {
-        const num = Number(key);
-        if (!isUint(num)) {
-          throw new Error(`Bitmask state keys must be uints. Found ${key}`);
-        }
-        if (typeof value !== 'string') {
-          throw new Error(`Bitmask state values must be strings. Found ${value}`);
-        }
-        if (num >= max) {
+      for (const key of Object.keys(args.states)) {
+        if (Number(key) >= max) {
           throw new Error(`State key exceeds maximum specified size`);
         }
       }
@@ -849,6 +840,13 @@ type BitlistArgs <Item extends TypeNode = TypeNode> = {
   pad?: Item['<Data>'];
 }
 
+const bitlist_schema = v.object({
+  item: v.node(),
+  length: v.uint(),
+  bitsize: v.uint(),
+  pad: v.optional(v.any()),
+});
+
 const Bitlist = CodecKit.from<{
   list: typeof List
 }>().run(Kit => Kit.composite({
@@ -856,14 +854,10 @@ const Bitlist = CodecKit.from<{
   kind: 'array',
   rule: 'item',
   isValidArgs (args: Dict): args is BitlistArgs {
-    if (!isUint(args.length)) {
-      throw new Error(`Bitlist length must be a positive number. Found ${args.length}`);
-    }
-    if (!isUint(args.bitsize) || args.bitsize === 0 || args.bitsize > 32) {
+    v.assert(bitlist_schema, args);
+
+    if (args.bitsize === 0 || args.bitsize > 32) {
       throw new Error(`Bitlist bitsize must be a number between 1 and 32. Found ${args.bitsize}`);
-    }
-    if (!(args.item instanceof TypeNode)) {
-      throw new Error('Bitlist requires an item node');
     }
     return true;
   },
@@ -1028,9 +1022,7 @@ const MeltedList = CodecKit.from<{
     };
   },
   isValidArgs (args: Dict): args is MeltedListArgs {
-    if (!isValidFields(args.fields)) {
-      throw new Error(`Invalid fields`);
-    }
+    v.assert(struct_schema, args);
     if (args.fields.some(field => field.item.kind !== 'array')) {
       throw new Error(`Meltedlist fields must all decode to arrays`);
     }

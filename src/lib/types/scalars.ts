@@ -1,6 +1,6 @@
 import * as v from './valibot.js';
 import { Lookup, hex, type Dict, type NumDict } from './utils.js';
-import { Rom, type datasize } from '../rom.js';
+import { type datasize } from '../rom.js';
 import {
   CodecKit,
 } from '../type-registry.js';
@@ -73,7 +73,7 @@ type UintArgs = {
 };
 
 const uint_schema = v.object({
-  size: v.picklist(Rom.datasizes),
+  size: v.datasize(),
 });
 
 const Uint = CodecKit.simple({
@@ -120,7 +120,7 @@ type FixedArgs = {
 };
 
 const fixed_schema = v.object({
-  size: v.picklist(Rom.datasizes),
+  size: v.datasize(),
   value: v.uint(),
   hide: v.optional(v.boolean()),
 });
@@ -157,7 +157,7 @@ const Fixed = UintKit.simple({
 type BoolArgs = { size?: datasize };
 
 const bool_schema = v.object({
-  size: v.optional(v.picklist(Rom.datasizes)),
+  size: v.optional(v.datasize()),
 });
 
 const Bool = UintKit.simple({
@@ -200,7 +200,7 @@ type EnumArgs = {
 };
 
 const enum_schema = v.object({
-  size: v.optional(v.picklist(Rom.datasizes)),
+  size: v.optional(v.datasize()),
   values: v.num_dict(v.string())
 });
 

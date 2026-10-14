@@ -1,10 +1,9 @@
-// 1. Re-export everything from the official Valibot library
+import * as v from 'valibot';
+import { Rom } from '../rom.js';
+import { TypeNode } from '../type-registry.js';
+
 export * from 'valibot';
 
-// 2. Import valibot locally so you can use its primitives in your helpers
-import * as v from 'valibot';
-
-// 3. Define and export your custom scalar/atomic helpers
 export const uint = () => v.pipe(
   v.number(), v.integer(), v.minValue(0)
 );
@@ -30,3 +29,6 @@ export const num_dict = <
   v.pipe(v.string(), v.digits()),
   value_schema
 );
+
+export const node = () => v.instance(TypeNode as v.Class);
+export const datasize = () => v.picklist(Rom.datasizes);
