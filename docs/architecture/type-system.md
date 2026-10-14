@@ -1,12 +1,12 @@
-# Type System
+# Codec System
 
 ## Overview
 
-Types are the fundamental building blocks of Romance schemas.
+Codecs are the fundamental building blocks of Romance schemas.
 
-A type is responsible for translating between an external representation and an internal representation.
+A codec is responsible for translating between an external representation and an internal representation.
 
-Types participate in two independent serialization pipelines:
+Codecs participate in two independent serialization pipelines:
 
 ```text
 ROM <-> Internal Data
@@ -32,13 +32,13 @@ parse()
 
 ## Internal Data
 
-Every type defines an internal representation.
+Every codec defines an internal representation.
 
 Examples:
 
-| Type   | Internal Representation |
+| Codec   | Internal Representation |
 | ------ | ----------------------- |
-| UInt8  | number                  |
+| UInt   | number                  |
 | String | string                  |
 | Struct | object                  |
 | List   | array                   |
@@ -66,7 +66,7 @@ Converts internal data into binary data.
 Internal Data -> ROM
 ```
 
-A valid type should support lossless decode/encode round-trips.
+A valid codec should support lossless decode/encode round-trips.
 
 ---
 
@@ -88,13 +88,13 @@ Converts editable data into internal data.
 Editable Data -> Internal Data
 ```
 
-A valid type should support lossless format/parse round-trips.
+A valid codec should support lossless format/parse round-trips.
 
 ---
 
 ## Composition
 
-Types may contain other types.
+Codecs may contain other codecs.
 
 Examples:
 
@@ -103,36 +103,36 @@ Examples:
 * Fork
 * PointerTable
 
-Complex schemas are constructed by composing simpler types together.
+Complex schemas are constructed by composing simpler codecs together.
 
 ## Organization
 
-The type system is organized into logical modules within `lib/types/`:
+Native codecs are organized into logical modules within `codecs/`:
 
-* `scalars.js`: Primitive and base types (e.g., `Uint`, `Enum`, `Tile`).
-* `collections.js`: Container and structural types (e.g., `List`, `Struct`, `Bitmask`).
-* `text.js`: String and text processing types (e.g., `TextStr`, `TextScript`).
-* `pointers.js`: Reference and pointer types (e.g., `Pointer`, `Dereference`).
-* `ops.js`: Logic and operational types (e.g., `Range`, `Fork`, `Custom`).
+* `scalars.js`: Primitive and base codecs (e.g., `Uint`, `Enum`, `Tile`).
+* `collections.js`: Container and structural codecs (e.g., `List`, `Struct`, `Bitmask`).
+* `text.js`: String and text processing codecs (e.g., `TextStr`, `TextScript`).
+* `pointers.js`: Reference and pointer codecs (e.g., `Pointer`, `Dereference`).
+* `ops.js`: Logic and operational codecs (e.g., `Range`, `Fork`, `Custom`).
 * `utils.js`: Core utilities and abstract base classes.
 
 ---
 
-## Custom Types
+## Custom Codecs
 
-Projects may define custom types.
+Projects may define custom codecs.
 
-Custom types are registered through the Project and become available during schema compilation.
+Custom codecs are registered through the Project and become available during schema compilation.
 
-The core engine does not distinguish between built-in and project-defined types.
+The core engine does not distinguish between built-in and project-defined codecs.
 
 ---
 
 ## Design Principle
 
-The type system prioritizes simplicity.
+The codec system prioritizes simplicity.
 
-Every type exposes the same conceptual interface, even if some operations are trivial or delegated to child types.
+Every codec exposes the same conceptual interface, even if some operations are trivial or delegated to child codecs.
 
 This uniformity makes the system easier to understand, extend, and compose.
 

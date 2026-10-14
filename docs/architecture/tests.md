@@ -26,7 +26,7 @@ runtime environment. For Romance, which has no external services, that means
 ### Why `unit/` mirrors the source tree
 
 The mirrored structure makes the test for any source file immediately findable without
-searching or memorizing conventions. `lib/types.js` → `tests/unit/lib/types.test.js`.
+searching or memorizing conventions. `core/engine.js` → `tests/unit/core/engine.test.js`.
 
 The alternative — organizing by feature name, behavior, or subsystem — introduces
 naming drift (features get renamed, tests don't), ownership ambiguity (where does a
