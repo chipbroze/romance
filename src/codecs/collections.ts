@@ -1,6 +1,6 @@
 import { Lookup, type Dict } from './utils.js';
 import * as v from './valibot.js';
-import { deepEqualTry } from '../lib/assert.js';
+import { deepEqualTry } from '../utils/assert.js';
 import { Rom, type datasize } from '../lib/rom.js';
 import type { Uint, Bool } from './scalars.js';
 import type { Custom, Range } from './ops.js';

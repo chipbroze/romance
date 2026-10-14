@@ -8,14 +8,14 @@ import type { Hook, ProfileRegistry } from './lib/project.js';
 import type { FormatOutput, EngineOptions } from './lib/engine.js';
 import { file_formats, isValidFormat } from './lib/file-formats.js';
 import type { FileFormatName } from './lib/file-formats.js';
-import { EvilMap } from './lib/map-utils.js';
+import { EvilMap } from './utils/map-utils.js';
 import {
   writePath,
   safeImport,
   readDir,
   writeDir,
   safeRead
-} from './lib/fs.js';
+} from './utils/fs.js';
 
 type SchemaConfig = {
   from: string;

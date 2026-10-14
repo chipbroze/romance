@@ -3,7 +3,7 @@
 import { Engine } from './engine.js';
 import { TypeRegistry } from './type-registry.js';
 import { SchemaGraph } from './schema-graph.js';
-import { CacheMap, EvilMap } from './map-utils.js';
+import { CacheMap, EvilMap } from '../utils/map-utils.js';
 
 type Hook = (data: unknown) => void;
 

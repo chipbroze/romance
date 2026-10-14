@@ -6,7 +6,7 @@ import * as path from "node:path";
 import * as fs from "node:fs";
 import { parseArgs } from 'node:util';
 import { Romance } from './romance.js';
-import { align } from './lib/log.js';
+import { align } from './utils/log.js';
 
 const CLI_NAME = 'romance';
 

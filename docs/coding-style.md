@@ -198,7 +198,7 @@ import {
   safeImport,
   safeRead,
   writeDir
-} from './lib/fs.js';
+} from './utils/fs.js';
 ```
 
 over:

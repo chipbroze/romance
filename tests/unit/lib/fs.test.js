@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { describe, it } from '#test';
-import { safeRead, readDir, writeDir } from '#root/lib/fs.js';
+import { safeRead, readDir, writeDir } from '#root/utils/fs.js';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import os from 'node:os';

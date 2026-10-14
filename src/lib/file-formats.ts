@@ -1,4 +1,4 @@
-import { EvilMap } from './map-utils.js';
+import { EvilMap } from '../utils/map-utils.js';
 import YAML from 'yaml';
 
 type FileFormatArgs <T, TName> = {
