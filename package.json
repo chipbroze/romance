@@ -30,7 +30,9 @@
     "test": "node --test './tests/**/*.test.js'",
     "test:fast": "node --test './tests/unit/**/*.test.js'",
     "test:slow": "RUN_SLOW=1 node --test './tests/**/*.test.js'",
-    "test:system": "node --test './tests/system/**/*.test.js'"
+    "test:system": "node --test './tests/system/**/*.test.js'",
+    "build": "tsc",
+    "postbuild": "chmod +x dist/cli.js"
   },
   "bugs": {
     "url": "https://github.com/chipbroze/romance/issues"

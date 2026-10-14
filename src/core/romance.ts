@@ -217,7 +217,10 @@ class Romance {
 
     return {
       data: source as Map<string, unknown>,
-      lib: source.get('.lib') as Map<string, Map<string, unknown>>
+      lib: (source.has('.lib')
+        ? source.get('.lib')
+        : new EvilMap()
+      ) as Map<string, Map<string, unknown>>
     };
   }
 

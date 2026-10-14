@@ -1,3 +1,4 @@
+rom_format: norom
 registry:
   schemas:
     simple: { from: './tests/fixtures/simple/schema.js' }
