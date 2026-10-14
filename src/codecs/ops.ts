@@ -8,7 +8,7 @@ import {
   passthrough,
   type Dict,
   type NumDict
-} from './utils.js';
+} from './helpers.js';
 
 import * as v from './valibot.js';
 import { type Rom } from '../core/rom.js';

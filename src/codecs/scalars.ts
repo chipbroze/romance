@@ -1,5 +1,5 @@
 import * as v from './valibot.js';
-import { Lookup, hex, type Dict, type NumDict } from './utils.js';
+import { Lookup, hex, type Dict, type NumDict } from './helpers.js';
 import { type datasize } from '../core/rom.js';
 import {
   CodecKit,

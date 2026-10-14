@@ -4,7 +4,7 @@ import {
   hex,
   Lookup,
   getAtPath
-} from '#root/codecs/utils.js';
+} from '#root/codecs/helpers.js';
 
 describe('Utils', () => {
   describe('Hex', () => {

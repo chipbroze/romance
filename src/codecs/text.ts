@@ -1,7 +1,7 @@
 import {
   Lookup,
   type Dict
-} from './utils.js';
+} from './helpers.js';
 
 import * as v from './valibot.js';
 import { type Rom, type datasize } from '../core/rom.js';

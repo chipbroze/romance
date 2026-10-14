@@ -1,6 +1,6 @@
 /* SchemaGraph */
 import { clone, transform } from '../utils/transform.js';
-import { hex } from '../codecs/utils.js';
+import { hex } from '../codecs/helpers.js';
 import { EvilMap } from '../utils/map-utils.js';
 import { TypeNode } from './type-registry.js';
 import './types.js'; // Ensure types are registered

@@ -1,4 +1,4 @@
-import { Lookup, type Dict } from './utils.js';
+import { Lookup, type Dict } from './helpers.js';
 import * as v from './valibot.js';
 import { deepEqualTry } from '../utils/assert.js';
 import { Rom, type datasize } from '../core/rom.js';
