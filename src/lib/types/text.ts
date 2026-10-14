@@ -1,19 +1,15 @@
 import {
-  isObj,
   Lookup,
-  isUint,
   type Dict
 } from './utils.js';
 
-import type {
-  datasize
-} from '../type-registry.js';
+import * as v from './valibot.js';
+import { type Rom, type datasize } from '../rom.js';
+import { list_mode_schema } from './collections.js';
 
 import {
   CodecKit
 } from '../type-registry.js';
-
-import type { Rom } from '../rom.js';
 
 import { List } from './collections.js';
 import type { ListModeSpec } from './collections.js';
@@ -122,6 +118,13 @@ type TextStrArgs <
   mode: ListModeSpec<string>;
 };
 
+const text_str_schema = v.object({
+  table: v.num_dict(v.string()),
+  size: v.datasize(),
+  pad: v.optional(v.any()),
+  mode: list_mode_schema
+});
+
 const TextStr = CodecKit.from<{
   list: typeof List;
   enum: typeof Enum;
@@ -135,12 +138,7 @@ const TextStr = CodecKit.from<{
     return { table, size, ...(pad_obj), mode };
   },
   isValidArgs (args: Dict): args is TextStrArgs {
-    if (!isObj(args.table)) {
-      throw new Error(`Expected table to be an object. Found ${args.table}`);
-    }
-    if (!Object.keys(args.table).every(k => (+k >= 0) && Number.isInteger(+k))) {
-      throw new Error(`Expected table keys to be integers. Found ${args.table}`);
-    }
+    v.assert(text_str_schema, args);
     if (Object.values(args.table).length !== new Set(Object.values(args.table)).size) {
       throw new Error(`Expected unique table values. Found ${args.table}`);
     }
@@ -213,6 +211,19 @@ type TextScriptArgs <
 const text_script_command_regex = /\[.*?\]|[^[]+/g;
 const text_script_text_name = '__text__';
 
+const text_script_schema = v.object({
+  table: v.num_dict(v.string()),
+  size: v.optional(v.datasize()),
+  mode: list_mode_schema,
+  ops: v.array(
+    v.object({
+      name: v.string(),
+      item: v.node(),
+      match: v.array(v.any()) // TODO
+    })
+  )
+});
+
 const TextScript = CodecKit.from<{
   uint: typeof Uint;
   string: typeof TextStr;
@@ -226,27 +237,13 @@ const TextScript = CodecKit.from<{
     return { ...args, ops: options };
   },
   isValidArgs (args: Dict): args is TextScriptArgs {
-    if (!Array.isArray(args.ops)) {
-      throw new Error(`Expected ops to be Array type. Found ${args.ops}`);
-    }
-    if (!isObj(args.table)) {
-      throw new Error(`Expected table to be Record type. Found ${args.table}`);
-    };
-    for (const [num, str] of Object.entries(args.table)) {
-      if (typeof str !== 'string') {
-        throw new Error(`Table values must be strings. Found ${str}`);
-      }
-      if (!isUint(+num)) {
-        throw new Error(`Table keys must be valid uints. Found ${num}`);
-      }
+    v.assert(text_script_schema, args);
+    for (const str of Object.values(args.table)) {
       if (/[[\]]/.test(str)) {
         throw new Error(`Cannot include square brackets in table strings`);
       }
     }
     for (const op of args.ops) {
-      if (!isObj(op) || !isObj(op.item)) {
-        throw new Error(`Expected op items to be Records. Found ${op}`);
-      }
       const kind = op.item.kind;
       if (kind !== 'number' && kind !== 'string' && kind !== 'void') {
         throw new Error(`Unexpected op item kind: ${kind}`);

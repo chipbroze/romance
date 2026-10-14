@@ -1,11 +1,12 @@
 import { type Dict, asNode, passthrough } from './utils.js';
+import * as v from './valibot.js';
 import type { datasize } from '../rom.js';
 import type { Uint, HexInt } from './scalars.js';
 import type { List } from './collections.js';
 import type { Range } from './ops.js';
 import {
   CodecKit,
-  TypeNode,
+  type TypeNode,
 } from '../type-registry.js';
 
 declare module '../type-registry.js' {
@@ -25,18 +26,28 @@ type DereferenceArgs <
   item: Item;
   reference: Ref;
   org: number;
-  warn: number;
+  warn?: number;
   toReference: (num: number) => Ref['<Data>'];
   // Use method syntax to bypass contravariance. This breaks type safety.
   toAddress (x: Ref['<Data>']): number;
 };
+
+const dereference_schema = v.object({
+  item: v.node(),
+  reference: v.node(),
+  org: v.uint(),
+  warn: v.optional(v.uint()),
+  toReference: v.function(),
+  toAddress: v.function(),
+});
 
 const Dereference = CodecKit.composite({
   alias: 'dereference',
   kind: 'unknown',
   rule: 'item', 
   isValidArgs (args: Dict): args is DereferenceArgs {
-    return args.item instanceof TypeNode && args.reference instanceof TypeNode;
+    v.assert(dereference_schema, args);
+    return true;
   },
   construct <Item extends TypeNode, Ref extends TypeNode> (
     input: DereferenceArgs<Item, Ref>
@@ -82,12 +93,21 @@ const Dereference = CodecKit.composite({
 
 type ListIndexArgs <Item extends TypeNode = TypeNode> = {
   org: number;
-  warn: number;
+  warn?: number;
   base?: number;
   chunk: number;
   item: Item;
   size?: datasize;
 };
+
+const list_index_schema = v.object({
+  item: v.node(),
+  org: v.uint(),
+  warn: v.optional(v.uint()),
+  base: v.optional(v.uint()),
+  chunk: v.uint(),
+  size: v.optional(v.datasize()),
+});
 
 const ListIndex = CodecKit.from<{
   uint: typeof Uint,
@@ -97,7 +117,8 @@ const ListIndex = CodecKit.from<{
   kind: 'array',
   rule: 'item',
   isValidArgs (args: Dict): args is ListIndexArgs {
-    return args.item instanceof TypeNode;
+    v.assert(list_index_schema, args);
+    return true;
   },
   construct <Item extends TypeNode> (
     { org, warn, base, chunk, item, size }: ListIndexArgs<Item>,
@@ -105,10 +126,11 @@ const ListIndex = CodecKit.from<{
   ) {
     const $base = base ?? org;
     const $size = size ?? 'byte';
+    const $warn = warn == null ? {} : { warn };
     const $node = api.item('dereference', {
       item,
       org,
-      warn,
+      ...$warn,
       reference: api.item('uint', { size: $size }),
       toAddress: (index: number) => $base + (+index * chunk),
       toReference: (address: number) => (address - $base) / chunk
@@ -122,6 +144,14 @@ type PointerArgs <
   Item extends TypeNode = TypeNode
 > = Omit<ListIndexArgs<Item>, 'chunk'>;
 
+const pointer_schema = v.object({
+  org: v.uint(),
+  warn: v.optional(v.uint()),
+  base: v.optional(v.uint()),
+  item: v.node(),
+  size: v.optional(v.datasize()),
+});
+
 const Pointer = CodecKit.from<{
   list_index: typeof ListIndex
 }>().run(Kit => Kit.composite({
@@ -129,7 +159,8 @@ const Pointer = CodecKit.from<{
   kind: 'unknown',
   rule: 'item',
   isValidArgs (args: Dict): args is PointerArgs {
-    return args ? true : false;
+    v.assert(pointer_schema, args);
+    return true;
   },
   construct <Item extends TypeNode> (
     args: PointerArgs<Item>,
@@ -149,9 +180,20 @@ type PointerIndexArgs <
   Item extends TypeNode = TypeNode
 > = PointerArgs<Item> & {
   pointers_org: number;
-  pointers_base: number;
+  pointers_base?: number;
   length: number;
 };
+
+const pointer_index_schema = v.object({
+  pointers_org: v.uint(),
+  pointers_base: v.optional(v.uint()),
+  length: v.uint(),
+  org: v.uint(),
+  warn: v.uint(),
+  base: v.optional(v.uint()),
+  item: v.node(),
+  size: v.optional(v.datasize()),
+});
 
 const PointerIndex = CodecKit.from<{
   list_index: typeof ListIndex,
@@ -161,7 +203,8 @@ const PointerIndex = CodecKit.from<{
   kind: 'unknown',
   rule: 'item',
   isValidArgs (args: Dict): args is PointerIndexArgs {
-    return args ? true : false;
+    v.assert(pointer_index_schema, args);
+    return true;
   },
   construct <Item extends TypeNode> (
     input: PointerIndexArgs<Item>,
@@ -174,11 +217,12 @@ const PointerIndex = CodecKit.from<{
       ...pointer_args
     } = input;
 
+    const $base = pointers_base == null ? {} : { base: pointers_base };
     const $node = api.item('list_index', {
       item: api.item('pointer', pointer_args),
       org: pointers_org,
       warn: pointers_org + 2 * length,
-      base: pointers_base,
+      ...$base,
       chunk: 2
     });
 
@@ -195,6 +239,15 @@ type PointerTableArgs <Item extends TypeNode = TypeNode> = {
   base?: number;
 };
 
+const pointer_table_schema = v.object({
+  item: v.node(),
+  length: v.uint(),
+  org: v.uint(),
+  warn: v.uint(),
+  wrap: v.optional(v.uint()),
+  base: v.optional(v.uint()),
+});
+
 const PointerTable = CodecKit.from<{
   list: typeof List,
   range: typeof Range,
@@ -205,7 +258,8 @@ const PointerTable = CodecKit.from<{
   kind: 'array',
   rule: 'list',
   isValidArgs (args: Dict): args is PointerTableArgs {
-    return args.item instanceof TypeNode;
+    v.assert(pointer_table_schema, args);
+    return true;
   },
   construct <Item extends TypeNode> (
     { item, length, org, warn, wrap, base }: PointerTableArgs<Item>,

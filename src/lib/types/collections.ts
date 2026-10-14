@@ -118,22 +118,24 @@ type ListArgs <
   mode: ListModeSpec<Item['<Data>']>;
 };
 
+const list_mode_schema = v.union([
+  v.object({
+    key: v.literal('length'),
+    arg: v.uint()
+  }),
+  v.object({
+    key: v.literal('eol'),
+    arg: v.any()
+  }),
+  v.object({
+    key: v.literal('until'),
+    arg: v.function()
+  })
+]);
+
 const list_schema = v.object({
   item: v.node(),
-  mode: v.union([
-    v.object({
-      key: v.literal('length'),
-      arg: v.uint()
-    }),
-    v.object({
-      key: v.literal('eol'),
-      arg: v.any()
-    }),
-    v.object({
-      key: v.literal('until'),
-      arg: v.function()
-    })
-  ])
+  mode: list_mode_schema
 });
 
 const List = CodecKit.composite({
@@ -356,7 +358,7 @@ type SegmentListArgs <Item extends TypeNode = TypeNode> = {
   length: number;
   org: number;
   base: number;
-  warn: number;
+  warn?: number;
   size?: datasize
 };
 
@@ -365,7 +367,7 @@ const segment_list_schema = v.object({
   length: v.uint(),
   org: v.uint(),
   base: v.optional(v.uint()),
-  warn: v.uint(),
+  warn: v.optional(v.uint()),
   size: v.optional(v.datasize()),
 });
 
@@ -389,6 +391,7 @@ const SegmentList = CodecKit.from<{
     type ItemData = Item['<Data>'];
     type ItemFormatted = Item['<Formatted>'];
     const $item = item as TypeNode<ItemData, ItemFormatted>;
+    const $warn = warn == null ? {} : { warn };
 
     size ??= 'word';
     base ??= org;
@@ -419,7 +422,7 @@ const SegmentList = CodecKit.from<{
 
         const $list = api.item('range', {
           org,
-          warn,
+          ...$warn,
           item: api.item('list', {
             item: $sublist,
             mode: { key: 'length', arg: length }
@@ -439,7 +442,7 @@ const SegmentList = CodecKit.from<{
         });
         const list = api.item('range', {
           org,
-          warn,
+          ...$warn,
           item: api.item('list', {
             mode: { key: 'length', arg: length },
             item: api.item('custom', {
@@ -1103,7 +1106,9 @@ export {
   Bitfield,
   Bitmask,
   Bitlist,
-  MeltedList
+  MeltedList,
+
+  list_mode_schema
 };
 
 export type {

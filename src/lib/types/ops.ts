@@ -11,18 +11,21 @@ import {
   type NumDict
 } from './utils.js';
 
+import * as v from './valibot.js';
+import { Rom } from '../rom.js';
+
 import {
+  list_mode_schema,
   type List,
   type ListModeSpec
 } from './collections.js';
 
 import {
   CodecKit,
-  TypeNode,
+  type TypeNode,
 } from '../type-registry.js';
 
 import type {
-  Rom,
   datasize
 } from '../type-registry.js';
 
@@ -139,24 +142,20 @@ type RangeArgs <Item extends TypeNode = TypeNode> = {
   warn?: number;
 };
 
+const range_schema = v.object({
+  item: v.node(),
+  org: v.uint(),
+  warn: v.optional(v.uint()),
+});
+
 const Range = CodecKit.composite({
   alias: 'range',
   kind: 'passthrough', // TODO: Need to implement 'passthrough'
   rule: 'item',
   isValidArgs (args: Dict): args is RangeArgs {
-    if (!(args.item instanceof TypeNode)) {
-      throw new Error(`Expected range item to be a TypeNode. Found ${JSON.stringify(args.item)}`);
-    }
-    if (!isUint(args.org)) {
-      throw new Error(`Expected org to be uint. Found ${args.org}`);
-    }
-    if (args.warn != null) {
-      if (!isUint(args.warn)) {
-        throw new Error(`Expected warn to be uint. Found ${args.org}`);
-      }
-      if (args.warn <= args.org) {
-        throw new Error(`Expected warn to be greater than org`);
-      }
+    v.assert(range_schema, args);
+    if (args.warn != null && args.warn <= args.org) {
+      throw new Error(`Expected warn to be greater than org`);
     }
     return true;
   },
@@ -203,22 +202,19 @@ type ModifierArgs <
   encoder: (x: Item['<Data>'], rom: Rom, api: RuntimeApi) => Item['<Data>'];
 };
 
+const modifier_schema = v.object({
+  item: v.node(),
+  self: v.optional(v.dict()),
+  decoder: v.function(),
+  encoder: v.function(),
+});
+
 const Modifier = CodecKit.composite({
   alias: 'modifier',
   kind: 'passthrough',
   rule: 'item',
   isValidArgs (args: Dict): args is ModifierArgs {
-    if (!(args.item instanceof TypeNode)) {
-      throw new Error(`Expected item to be a TypeNode. Found ${args.item}`);
-    }
-    if ('self' in args && !isObj(args.self)) {
-      throw new Error(`Expected self to be an object or undefined`);
-    }
-    for (const key of ['decoder', 'encoder']) {
-      if (typeof args[key] !== 'function') {
-        throw new Error(`Expected ${key} to be a function`);
-      }
-    }
+    v.assert(modifier_schema, args);
     return true;
   },
   construct <
@@ -255,22 +251,19 @@ type ViewArgs <
   parser: (formatted: F, api: RuntimeApi) => Item['<Data>'];
 };
 
+const view_schema = v.object({
+  item: v.node(),
+  self: v.optional(v.dict()),
+  formatter: v.function(),
+  parser: v.function(),
+});
+
 const View = CodecKit.composite({
   alias: 'view',
   kind: 'passthrough',
   rule: 'view',
   isValidArgs (args: Dict): args is ViewArgs {
-    if (!(args.item instanceof TypeNode)) {
-      throw new Error(`Expected item to be a TypeNode. Found ${args.item}`);
-    }
-    if ('self' in args && !isObj(args.self)) {
-      throw new Error(`Expected self to be an object or undefined`);
-    }
-    for (const key of ['formatter', 'parser']) {
-      if (typeof args[key] !== 'function') {
-        throw new Error(`Expected ${key} to be a function`);
-      }
-    }
+    v.assert(view_schema, args);
     return true;
   },
   construct <
@@ -313,20 +306,17 @@ type CustomArgs <Data = any, Formatted = Data, Input extends Dict = Dict> = {
   }
 };
 
+const custom_schema = v.object({
+  args: v.optional(v.dict()),
+  construct: v.function(),
+});
+
 const Custom = CodecKit.Complete.composite({
   alias: 'custom',
   kind: 'unknown',
   rule: 'custom',
   isValidArgs (args: Dict): args is CustomArgs {
-    if (typeof args.construct !== 'function') {
-      throw new Error(`Expected construct to be a function`);
-    }
-    if (args.construct == null && args.args != null) {
-      throw new Error(`Args only supported alongside construct() field`);
-    }
-    if (args.args != null && !isObj(args.args)) {
-      throw new Error(`Expected args to be an object`);
-    }
+    v.assert(custom_schema, args);
     return true;
   },
   construct <Data, Formatted, Input extends Dict> (
@@ -400,6 +390,20 @@ type ForkFormattedFor<
   );
 }[number];
 
+const options_schema = v.array(
+  v.object({
+    name: v.string(),
+    item: v.node(),
+    match: v.array(v.any()),
+    omit_control: v.optional(v.boolean()),
+  })
+);
+
+const fork_schema = v.object({
+  control: v.node(),
+  options: options_schema
+});
+
 const Fork = CodecKit.composite({
   alias: 'fork',
   kind: 'object',
@@ -431,9 +435,7 @@ const Fork = CodecKit.composite({
     return { ...rest, options };
   },
   isValidArgs (args: Dict): args is ForkArgs {
-    if (!(args.control instanceof TypeNode)) {
-      throw new Error(`Expected control to be a TypeNode. Found ${args.control}`);
-    }
+    v.assert(fork_schema, args);
     const control_kind = args.control.kind;
     if (!['number', 'boolean', 'string'].includes(control_kind)) {
       throw new Error([
@@ -441,27 +443,11 @@ const Fork = CodecKit.composite({
         `Found ${control_kind}`
       ].join(' '));
     }
-    if (!Array.isArray(args.options)) {
-      throw new Error(`Expected options to be an array. Found ${args.options}`);
-    }
     const names = new Set<string>();
     for (const option of args.options) {
-      if (!isObj(option)) {
-        throw new Error(`Expected option to be an object. Found ${option}`);
-      }
-      if (!(option.item instanceof TypeNode)) {
-        throw new Error(`Expected option item to be a TypeNode`);
-      }
-      if (typeof option.name !== 'string') {
-        throw new Error(`Expected option.name to be a string`);
-      } else {
-        names.add(option.name);
-      }
+      names.add(option.name);
       if ('code' in option) {
         throw new Error(`Code field should not exist on options`);
-      }
-      if (!Array.isArray(option.match)) {
-        throw new Error(`Expected option.match to be an Array`);
       }
       if ('omit_control' in option) {
         if (option.match.length !== 1 || typeof option.match[0] !== control_kind) {
@@ -618,6 +604,12 @@ type ScriptArgs <
   mode: ListModeSpec<ForkDataFor<ControlNode['<Data>'], Options>>
 };
 
+const script_schema = v.object({
+  control: v.node(),
+  options: options_schema,
+  mode: list_mode_schema
+});
+
 const Script = CodecKit.from<{
   list: typeof List,
   fork: typeof Fork
@@ -637,6 +629,7 @@ const Script = CodecKit.from<{
     return args;
   },
   isValidArgs (_args: Dict): _args is ScriptArgs {
+    v.assert(script_schema, _args);
     return true;
   },
   construct <
@@ -675,6 +668,12 @@ type ResolverArgs <
   ) => TypeNode<Data, Formatted>
 };
 
+const resolver_schema = v.object({
+  self: v.optional(v.dict()),
+  from: v.array(v.string()),
+  toNode: v.function(),
+});
+
 const Resolver = CodecKit.Complete.composite({
   alias: 'resolver',
   kind: 'unknown',
@@ -686,15 +685,7 @@ const Resolver = CodecKit.Complete.composite({
     return { from, ...rest };
   },
   isValidArgs (args: Dict): args is ResolverArgs {
-    if (!Array.isArray(args.from) || !args.from.every(isStr)) {
-      throw new Error(`Expected from to be a string[]`);
-    }
-    if (args.self != null && !isObj(args.self)) {
-      throw new Error(`Expected "self" to be undefined, or an object`);
-    }
-    if (typeof args.toNode !== 'function') {
-      throw new Error(`Expected toNode() to be a function`);
-    }
+    v.assert(resolver_schema, args);
     return true;
   },
   construct <
@@ -741,31 +732,20 @@ type EntityArgs = {
   inject?: NumDict<string>
 };
 
+const entity_schema = v.object({
+  size: v.datasize(),
+  from: v.string(),
+  path: v.array(v.string()),
+  inject: v.optional(v.num_dict(v.string())),
+});
+
 const Entity = CodecKit.from<{
   uint: typeof Uint
 }>().simple({
   alias: 'entity',
   kind: 'number', // TODO: Technically, formatted is string...
   isValidArgs (args: Dict): args is EntityArgs {
-    if (!isStr(args.from)) {
-      throw new Error(`Expected from to be a single string`);
-    }
-    if (!Array.isArray(args.path) || !args.path.every(isStr)) {
-      throw new Error(`Expected path to be a string[]. Found ${args.path}`);
-    }
-    if (args.inject != null) {
-      if (!isObj(args.inject)) {
-        throw new Error(`Expected inject to be object. Found ${args.inject}`);
-      }
-      for (const [key, value] of Object.entries(args.inject)) {
-        if (!isUint(+key)) {
-          throw new Error(`Expected inject keys to be uints`);
-        }
-        if (typeof value !== 'string') {
-          throw new Error(`Expected inject values to be strings`);
-        }
-      }
-    }
+    v.assert(entity_schema, args);
     return true;
   },
   construct ({ size, from, path, inject = {} }, api) {
