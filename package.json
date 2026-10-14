@@ -9,7 +9,11 @@
     "hack"
   ],
   "author": "Chip Belpedio",
-  "main": "dist/romance.js",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./codec-kit": "./dist/codec-kit.js"
+  },
   "imports": {
     "#root/*": "./dist/*",
     "#tests/*": "./tests/*",

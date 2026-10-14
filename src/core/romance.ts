@@ -3,19 +3,19 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
-import { Project } from './core/project.js';
-import type { Hook, ProfileRegistry } from './core/project.js';
-import type { FormatOutput, EngineOptions } from './core/engine.js';
-import { file_formats, isValidFormat } from './core/file-formats.js';
-import type { FileFormatName } from './core/file-formats.js';
-import { EvilMap } from './utils/map-utils.js';
+import { Project } from './project.js';
+import type { Hook, ProfileRegistry } from './project.js';
+import type { FormatOutput, EngineOptions } from './engine.js';
+import { file_formats, isValidFormat } from './file-formats.js';
+import type { FileFormatName } from './file-formats.js';
+import { EvilMap } from '../utils/map-utils.js';
 import {
   writePath,
   safeImport,
   readDir,
   writeDir,
   safeRead
-} from './utils/fs.js';
+} from '../utils/fs.js';
 
 type SchemaConfig = {
   from: string;
