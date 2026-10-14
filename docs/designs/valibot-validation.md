@@ -4,7 +4,7 @@
 Currently, type argument validation (`isValidArgs()`) across the type system is implemented using manual type checking and conditional error throwing (e.g. checking `typeof`, `Number.isInteger`, `Rom.isValidSize`, custom range checks, etc.). This leads to repetitive boilerplate code across multiple codec types (`Uint`, `Fixed`, `Enum`, etc.) and inconsistent error handling.
 
 ## Proposed Solution
-Leverage [Valibot](https://valibot.dev/) (already installed as a dependency) directly.
+Leverage [Valibot](https://valibot.dev/) (already installed as a dependency) via a local wrapper module (`src/lib/types/valibot.ts`), which re-exports Valibot and provides domain-specific schema helpers (`v.uint()`, `v.num_dict()`, etc.).
 
 Validation will follow a strict two-phase pattern within `isValidArgs(args)`:
 1. **Phase 1 (Valibot Shape Validation):** Define general shapes/schemas of arguments using Valibot and assert them using `v.assert(Schema, args)` to validate shape and narrow TypeScript types in place without object allocation or copying.
@@ -24,16 +24,17 @@ v.number()
 v.boolean()
 v.function()
 v.any(): Acceptable when any value is allowed, or when phase 2 custom validation will handle it.
+Custom helpers from `src/lib/types/valibot.ts`: `v.uint()`, `v.uint8()`, `v.uint16()`, `v.dict()`, `v.num_dict()`.
 
 **Avoid**
-v.pipe(), v.check(), v.custom(): Do not embed custom assertions or procedural validation inside schemas. Keep all domain logic in Phase 2.
+v.pipe(), v.check(), v.custom(): Do not embed custom assertions or procedural validation inside codec schemas. `v.pipe()` is restricted exclusively to inside `src/lib/types/valibot.ts` for atomic type refinements (e.g. number + integer + min/max). Keep all domain logic in Phase 2.
 v.parse() / v.safeParse(): These allocate new objects and strip unmapped fields. Use v.assert() to validate original references in-place.
 v.looseObject() / v.strictObject(): Redundant when using v.assert(). Standard v.object() naturally preserves unmapped properties without cloning.
 v.transform() / Mutations: Codec validation must remain pure and read-only.
 
 ### Example Pattern (`ForkCodec`)
 ```ts
-import * as v from 'valibot';
+import * as v from './valibot.js';
 
 const fork_schema = v.object({
   control: v.instance(TypeNode),
