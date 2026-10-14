@@ -8,7 +8,7 @@ import {
   Bitlist,
   MeltedList,
   SegmentList
-} from '#root/lib/types/collections.js';
+} from '#root/codecs/collections.js';
 
 describe('Collections', () => {
   const tester = new TypeTester();

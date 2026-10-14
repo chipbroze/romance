@@ -10,7 +10,7 @@ import {
   Bool,
   Enum,
   Tile
-} from '#root/lib/types/scalars.js';
+} from '#root/codecs/scalars.js';
 
 const tester = new TypeTester();
 

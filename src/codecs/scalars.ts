@@ -1,11 +1,11 @@
 import * as v from './valibot.js';
 import { Lookup, hex, type Dict, type NumDict } from './utils.js';
-import { type datasize } from '../rom.js';
+import { type datasize } from '../lib/rom.js';
 import {
   CodecKit,
-} from '../type-registry.js';
+} from '../lib/type-registry.js';
 
-declare module '../type-registry.js' {
+declare module '../lib/type-registry.js' {
   interface MasterTypeRegistry {
     empty: typeof Empty;
     static: typeof Static;

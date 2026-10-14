@@ -1,16 +1,16 @@
 import { Lookup, type Dict } from './utils.js';
 import * as v from './valibot.js';
-import { deepEqualTry } from '../assert.js';
-import { Rom, type datasize } from '../rom.js';
+import { deepEqualTry } from '../lib/assert.js';
+import { Rom, type datasize } from '../lib/rom.js';
 import type { Uint, Bool } from './scalars.js';
 import type { Custom, Range } from './ops.js';
 import {
   CodecKit,
   type TypeNode,
   type RuntimeApi,
-} from '../type-registry.js';
+} from '../lib/type-registry.js';
 
-declare module '../type-registry.js' {
+declare module '../lib/type-registry.js' {
   interface MasterTypeRegistry {
     list: typeof List;
     struct: typeof Struct;
@@ -21,9 +21,7 @@ declare module '../type-registry.js' {
     bitlist: typeof Bitlist;
     melted_list: typeof MeltedList;
   }
-}
 
-declare module '../type-registry.js' {
   interface CodecRules <Args=Dict> {
     fields: (Args extends { readonly fields: infer Fs extends FieldTuple } ? [
       {[F in Fs[number] as F['name']]: F['item']['<Data>'];},

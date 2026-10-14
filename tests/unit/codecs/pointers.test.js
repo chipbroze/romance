@@ -1,6 +1,6 @@
 import { describe, it } from '#test';
 import { TypeTester } from '#tests/helpers/type-test.js';
-import { Pointer, PointerIndex, PointerTable } from '#root/lib/types/pointers.js';
+import { Pointer, PointerIndex, PointerTable } from '#root/codecs/pointers.js';
 
 describe('Pointers', () => {
   const tester = new TypeTester();

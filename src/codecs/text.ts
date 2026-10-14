@@ -4,12 +4,12 @@ import {
 } from './utils.js';
 
 import * as v from './valibot.js';
-import { type Rom, type datasize } from '../rom.js';
+import { type Rom, type datasize } from '../lib/rom.js';
 import { list_mode_schema } from './collections.js';
 
 import {
   CodecKit
-} from '../type-registry.js';
+} from '../lib/type-registry.js';
 
 import { List } from './collections.js';
 import type { ListModeSpec } from './collections.js';
@@ -17,7 +17,7 @@ import type { Enum, Uint } from './scalars.js';
 import type { Script, ForkOptions, ForkDataFor } from './ops.js';
 import { Fork } from './ops.js';
 
-declare module '../type-registry.js' {
+declare module '../lib/type-registry.js' {
   interface MasterTypeRegistry {
     string: typeof TextStr;
     text_script: typeof TextScript;

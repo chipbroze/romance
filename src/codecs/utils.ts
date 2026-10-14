@@ -1,11 +1,11 @@
 "use strict";
 
-import { Rom } from '../rom.js';
+import { Rom } from '../lib/rom.js';
 import type {
   datasize,
   TypeNode,
   RomanceTypeInstance
-} from '../type-registry.js';
+} from '../lib/type-registry.js';
 
 type Dict <V = unknown> = Record<string, V>;
 type NumDict <V = unknown> = Record<number, V>;

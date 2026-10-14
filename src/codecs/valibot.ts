@@ -1,6 +1,6 @@
 import * as v from 'valibot';
-import { Rom } from '../rom.js';
-import { TypeNode } from '../type-registry.js';
+import { Rom } from '../lib/rom.js';
+import { TypeNode } from '../lib/type-registry.js';
 
 export * from 'valibot';
 

@@ -3,9 +3,8 @@ import { describe, it } from '#test';
 import {
   hex,
   Lookup,
-  // unpackFields,
   getAtPath
-} from '#root/lib/types/utils.js';
+} from '#root/codecs/utils.js';
 
 describe('Utils', () => {
   describe('Hex', () => {

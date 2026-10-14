@@ -1,6 +1,6 @@
 import { describe, it } from '#test';
 import { TypeTester } from '#tests/helpers/type-test.js';
-import { TextStr, TextScript } from '#root/lib/types/text.js';
+import { TextStr, TextScript } from '#root/codecs/text.js';
 
 describe('Text', () => {
   const tester = new TypeTester();

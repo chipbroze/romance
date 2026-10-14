@@ -9,7 +9,7 @@ import {
   //Script,
   Resolver,
   Entity
-} from '#root/lib/types/ops.js';
+} from '#root/codecs/ops.js';
 
 describe('Ops', () => {
   const lib_store = new Map();

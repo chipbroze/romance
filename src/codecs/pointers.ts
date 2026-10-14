@@ -1,15 +1,15 @@
 import { type Dict, asNode, passthrough } from './utils.js';
 import * as v from './valibot.js';
-import type { datasize } from '../rom.js';
+import type { datasize } from '../lib/rom.js';
 import type { Uint, HexInt } from './scalars.js';
 import type { List } from './collections.js';
 import type { Range } from './ops.js';
 import {
   CodecKit,
   type TypeNode,
-} from '../type-registry.js';
+} from '../lib/type-registry.js';
 
-declare module '../type-registry.js' {
+declare module '../lib/type-registry.js' {
   interface MasterTypeRegistry {
     dereference: typeof Dereference;
     list_index: typeof ListIndex;
