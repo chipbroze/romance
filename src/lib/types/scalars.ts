@@ -1,4 +1,5 @@
-import { Lookup, hex, type Dict } from './utils.js';
+import * as v from './valibot.js';
+import { Lookup, hex, type Dict, type NumDict } from './utils.js';
 import { Rom, type datasize } from '../rom.js';
 import {
   CodecKit,
@@ -17,9 +18,15 @@ declare module '../type-registry.js' {
   }
 }
 
+const empty_schema = v.object({});
+
 const Empty = CodecKit.simple({
   alias: 'empty',
   kind: 'void',
+  isValidArgs (args: Dict): args is Dict {
+    v.assert(empty_schema, args);
+    return true;
+  },
   construct () {
     return {
       decode: () => {},
@@ -30,9 +37,17 @@ const Empty = CodecKit.simple({
   }
 });
 
+const static_schema = v.object({
+  value: v.any(),
+});
+
 const Static = CodecKit.simple({
   alias: 'static',
   kind: 'unknown',
+  isValidArgs (args: Dict): args is { value: unknown } {
+    v.assert(static_schema, args);
+    return true;
+  },
   construct ({ value }) {
     return {
       decode: () => value,
@@ -57,17 +72,19 @@ type UintArgs = {
   size: datasize
 };
 
+const uint_schema = v.object({
+  size: v.picklist(Rom.datasizes),
+});
+
 const Uint = CodecKit.simple({
   alias: 'uint',
   kind: 'number',
   isValidArgs (args: Dict): args is UintArgs {
-    if (!Rom.isValidSize(args.size)) {
-      throw new Error(`Input.size is not valid: ${args.size}`);
-    }
+    v.assert(uint_schema, args);
     return true;
   },
   construct (args) {
-    const size = args.size ?? 'byte';
+    const size = args.size;
     return {
       decode: (rom) => rom.read(size),
       encode: (uint, rom) => rom.write(uint, size),
@@ -102,16 +119,17 @@ type FixedArgs = {
   hide?: boolean;
 };
 
+const fixed_schema = v.object({
+  size: v.picklist(Rom.datasizes),
+  value: v.uint(),
+  hide: v.optional(v.boolean()),
+});
+
 const Fixed = UintKit.simple({
   alias: 'fixed',
   kind: 'number',
   isValidArgs (args: Dict): args is FixedArgs {
-    if (typeof args.hide === 'object') {
-      throw new Error(`Expected boolean or undefined for "hide". Found ${args.hide}`);
-    }
-    if (typeof args.value !== 'number' || !Number.isInteger(args.value) || args.value < 0) {
-      throw new Error(`Expected uint for "value". Found ${args.value}`);
-    }
+    v.assert(fixed_schema, args);
     if (args.value > getSizeMax(args.size)) {
       throw new Error(`Fixed value (${args.value}) exceeds max for size: ${args.size}`);
     }
@@ -136,10 +154,20 @@ const Fixed = UintKit.simple({
   }
 });
 
+type BoolArgs = { size?: datasize };
+
+const bool_schema = v.object({
+  size: v.optional(v.picklist(Rom.datasizes)),
+});
+
 const Bool = UintKit.simple({
   alias: 'bool',
   kind: 'boolean',
-  construct (args: { size?: datasize }, api) {
+  isValidArgs (args: Dict): args is BoolArgs {
+    v.assert(bool_schema, args);
+    return true;
+  },
+  construct (args: BoolArgs, api) {
     const size = args.size ?? 'byte';
     const $uint = api.item('uint', { size });
 
@@ -166,33 +194,40 @@ const Bool = UintKit.simple({
   }
 });
 
+type EnumArgs = {
+  size?: datasize;
+  values: NumDict<string>;
+};
+
+const enum_schema = v.object({
+  size: v.optional(v.picklist(Rom.datasizes)),
+  values: v.num_dict(v.string())
+});
+
 const Enum = UintKit.simple({
   alias: 'enum',
   kind: 'string',
-  isValidArgs (args: Record<string, unknown>): args is ({
-    size?: datasize;
-    values: string[] | Record<number, string>;
-  }) {
-    const { values } = args;
-    if (values == null || typeof values !== 'object') {
-      throw new Error(`Expected array or object for "values". Found: ${values}`);
+  // Normalize array values into object with index keys
+  normalizeArgs (args) {
+    const { values: raw_values, ...rest } = args;
+    const values = (Array.isArray(raw_values)
+      ? { ...raw_values }
+      : raw_values
+    );
+    return { values, ...rest };
+  },
+  isValidArgs (args: Dict): args is EnumArgs {
+    v.assert(enum_schema, args);
+    const { values, size } = args;
+    const keys = Object.keys(values).map(Number);
+    const max_key = Math.max(...keys);
+
+    if (max_key > getSizeMax(size)) {
+      throw new Error(`Found uint size exceeding max: ${max_key}`);
     }
-    if (maxKey() > getSizeMax(args.size)) {
-      throw new Error(`Found uint size exceeding max: ${maxKey()}`);
-    }
-    function maxKey () {
-      if (Array.isArray(values)) {
-        return values.length - 1;
-      } else {
-        return Math.max(
-          ...Object.keys(values as Record<string, unknown>).map(Number)
-        );
-      }
-    }
-    if (!args.size && Object.keys(values).some(k => parseInt(k) > 0xFF)) {
+    if (!size && keys.some(k => k > 0xFF)) {
       throw new Error('Must specify size if enum keys > 0xFF');
     }
-
     return true;
   },
   construct ({ values, size='byte' }, api) {
@@ -211,11 +246,23 @@ const Enum = UintKit.simple({
   }
 });
 
+type TileArgs = {
+ bpp: 1 | 2 | 4 
+};
+
+const tile_schema = v.object({
+  bpp: v.picklist([1, 2, 4]),
+});
+
 // TODO: Reduce use of `!` for potentially undefined variables
 const Tile = CodecKit.simple({
   alias: 'tile',
   kind: 'array',
-  construct ({ bpp }: { bpp: 2 | 4 }) {
+  isValidArgs (args: Dict): args is TileArgs {
+    v.assert(tile_schema, args);
+    return true;
+  },
+  construct ({ bpp }) {
     return {
       decode: (rom) => {
         const data: number[] = new Array(64).fill(0x00);

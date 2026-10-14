@@ -195,5 +195,28 @@ describe('Scalars', () => {
         ].join('\n')
       });
     });
+
+    it('throws on invalid tile bpp', () => {
+      assert.throws(() => Tile.isValidArgs({ bpp: 3 }));
+    });
+  });
+
+  describe('Argument Validation', () => {
+    it('validates Empty args', () => {
+      assert.strictEqual(Empty.isValidArgs({}), true);
+      assert.throws(() => Empty.isValidArgs(null));
+      assert.throws(() => Empty.isValidArgs('string'));
+    });
+
+    it('validates Uint args', () => {
+      assert.strictEqual(Uint.isValidArgs({ size: 'byte' }), true);
+      assert.throws(() => Uint.isValidArgs({ size: 'invalid' }));
+    });
+
+    it('validates Bool args', () => {
+      assert.strictEqual(Bool.isValidArgs({}), true);
+      assert.strictEqual(Bool.isValidArgs({ size: 'word' }), true);
+      assert.throws(() => Bool.isValidArgs({ size: 'invalid' }));
+    });
   });
 });
