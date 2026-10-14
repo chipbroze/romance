@@ -9,6 +9,7 @@ import type { FormatOutput, EngineOptions } from './engine.js';
 import { file_formats, isValidFormat } from './file-formats.js';
 import type { FileFormatName } from './file-formats.js';
 import { EvilMap } from '../utils/map-utils.js';
+import { Rom, type RomFormat } from './rom.js';
 import {
   writePath,
   safeImport,
@@ -41,6 +42,7 @@ type HooksRegistry = Record<string, HookConfig>;
 type CodecRegistry = Record<string, readonly string[]>
 
 type Manifest = {
+  rom_format: RomFormat;
   registry: {
     codecs: CodecRegistry;
     schemas: SchemaRegistry;
@@ -51,8 +53,13 @@ type Manifest = {
 
 type Workspace = FormatOutput;
 
+function isObj (x: unknown): x is Record<string, unknown> {
+  return x != null && typeof x === 'object';
+}
+
 function toManifest (input: unknown): Manifest {
   const manifest = {
+    rom_format: '' as RomFormat,
     registry: {
       schemas: {},
       hooks: {},
@@ -61,9 +68,12 @@ function toManifest (input: unknown): Manifest {
     profiles: {}
   } as Manifest;
 
-  if (!input || typeof input !== 'object') {
+  if (!isObj(input)) {
     throw new Error(`Manifest must be an object`);
   }
+
+  Rom.assertRomFormat(input.rom_format);
+  manifest.rom_format = input.rom_format;
 
   if ('registry' in input) {
     const registry = input.registry;
@@ -256,24 +266,26 @@ class Romance {
     return engine.dump(rom, flags);
   }
 
-  static from ({ codecs, schemas, hooks, profiles }: {
+  static from ({ codecs, schemas, hooks, profiles, rom_format }: {
     codecs: unknown[];
     schemas: Map<string, SchemaItem>;
     hooks: Map<string, Hook>;
     profiles: ProfileRegistry;
+    rom_format: RomFormat;
   }): Romance {
     const project = Project.from({
       codecs,
       schemas,
       hooks,
-      profiles
+      profiles,
+      rom_format
     });
 
     return new Romance({ project, schemas });
   }
 
   static async fromManifest (manifest: Manifest): Promise<Romance> {
-    const { registry, profiles } = manifest;
+    const { registry, profiles, rom_format } = manifest;
 
     const codecs = await importCodecs(registry.codecs);
     const schemas = await importSchemas(registry.schemas);
@@ -283,7 +295,8 @@ class Romance {
       codecs,
       schemas,
       hooks,
-      profiles
+      profiles,
+      rom_format
     });
   }
 

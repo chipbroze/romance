@@ -69,15 +69,24 @@ class Frame {
   }
 }
 
-type RomFormat = 'hirom' | 'lorom';
+type RomFormat = 'hirom' | 'lorom' | 'norom';
 type RomMapper = {
   readonly headered_size: number;
   mapTo (offset: number): number;
   mapFrom (index: number): number;
-  checksum (buffer: Uint8Array): number;
+  checksum? (buffer: Uint8Array): number;
 }
 
 const rom_mappers: Record<RomFormat, RomMapper> = {
+  norom: {
+    headered_size: Infinity,
+    mapTo (offset: number) {
+      return offset;
+    },
+    mapFrom (index: number) {
+      return index;
+    }
+  },
   hirom: {
     headered_size: 0x300200,
     mapTo (offset: number) {
@@ -379,15 +388,17 @@ class Rom {
   }
 
   finalize (expected_checksum?: number): Uint8Array {
-    const checksum = this.#mapper.checksum(this.#buffer);
+    if (this.#mapper.checksum) {
+      const checksum = this.#mapper.checksum(this.#buffer);
 
-    if (expected_checksum != null && checksum !== expected_checksum) {
-      console.warn(`\n\nWARNING: Checksum does not match expected\n\n`);
+      if (expected_checksum != null && checksum !== expected_checksum) {
+        console.warn(`\n\nWARNING: Checksum does not match expected\n\n`);
+      }
+
+      const inverted = checksum ^ 0xFFFF;
+      this.writeAt(0xC0FFDE, checksum, 'word');
+      this.writeAt(0xC0FFDC, inverted, 'word');
     }
-
-    const inverted = checksum ^ 0xFFFF;
-    this.writeAt(0xC0FFDE, checksum, 'word');
-    this.writeAt(0xC0FFDC, inverted, 'word');
 
     return this.#full_buffer;
   }

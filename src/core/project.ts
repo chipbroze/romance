@@ -4,6 +4,7 @@ import { Engine } from './engine.js';
 import { TypeRegistry } from './type-registry.js';
 import { SchemaGraph } from './schema-graph.js';
 import { CacheMap, EvilMap } from '../utils/map-utils.js';
+import { type RomFormat } from './rom.js';
 
 type Hook = (data: unknown) => void;
 
@@ -22,31 +23,36 @@ class Project {
   >;
   #hooks: Map<string, Hook>;
   #explicit_profiles?: Record<string, ProfileConfig>;
+  #rom_format: RomFormat;
 
-  constructor ({ typeset, schemas, hooks, profiles }: {
+  constructor ({ typeset, schemas, hooks, profiles, rom_format }: {
     typeset: TypeRegistry;
     schemas: Map<string, { item: unknown }>;
     hooks: Map<string, Hook>;
     profiles?: ProfileRegistry | undefined;
+    rom_format: RomFormat;
   }) {
     this.#schemas = new CacheMap(schemas.entries(), (id, schema) => {
       return new SchemaGraph(id, typeset).compile(schema.item);
     });
     this.#hooks = hooks;
     this.#explicit_profiles = profiles || {};
+    this.#rom_format = rom_format;
   }
 
-  static from ({ codecs, schemas, hooks, profiles }: {
+  static from ({ codecs, schemas, hooks, profiles, rom_format }: {
     codecs: unknown[];
     schemas: Map<string, { item: unknown }>;
     hooks: Map<string, Hook>;
     profiles?: Record<string, ProfileConfig>;
+    rom_format: RomFormat;
   }): Project {
     return new Project({
       typeset: new TypeRegistry(codecs),
       schemas: EvilMap.from(schemas),
       hooks: EvilMap.from(hooks),
-      profiles: profiles
+      profiles,
+      rom_format
     });
   }
 
@@ -82,8 +88,9 @@ class Project {
 
     const schemas = filterMap(this.#schemas, profile_obj.schemas);
     const hooks = [...filterMap(this.#hooks, profile_obj.hooks).values()];
+    const rom_format = this.#rom_format;
 
-    return new Engine({ schemas, hooks });
+    return new Engine({ schemas, hooks, rom_format });
   }
 }
 

@@ -6,6 +6,7 @@ import { Project } from '#root/core/project.js';
 describe('Project Schema Compilation', () => {
   it('compiles and executes a simple uint schema', () => {
     const project = Project.from({
+      rom_format: 'hirom',
       types: [],
       hooks: new Map(),
       schemas: new Map([

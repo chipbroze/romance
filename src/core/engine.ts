@@ -270,24 +270,30 @@ class Engine {
   #hooks: HooksList;
   #rom_format: RomFormat;
 
-  constructor ({ schemas, hooks }: {
+  constructor ({ schemas, hooks, rom_format }: {
     schemas: Map<string, SchemaGraph>;
     hooks?: HooksList;
+    rom_format: RomFormat;
   }) {
     this.#schemas = schemas;
     this.#hooks = hooks || [];
-    this.#rom_format = 'hirom';
+    this.#rom_format = rom_format;
   }
 
-  static from ({ schemas, hooks }: {
+  static from ({ schemas, hooks, rom_format }: {
     hooks: HooksList;
-    schemas: Map<string, { item: unknown }>
+    schemas: Map<string, { item: unknown }>;
+    rom_format: RomFormat;
   }): Engine {
     const type_registry = new TypeRegistry([]);
     const schema_graphs = new Map([...schemas.entries()].map(([id, schema]) => {
       return [id, new SchemaGraph(id, type_registry).compile(schema.item)];
     }));
-    return new Engine({ hooks, schemas: schema_graphs });
+    return new Engine({
+      hooks,
+      schemas: schema_graphs,
+      rom_format
+    });
   }
 
   import (

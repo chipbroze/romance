@@ -49,6 +49,7 @@ describe('Engine', () => {
 
     const engine = Engine.from({
       hooks: [],
+      rom_format: 'hirom',
       schemas: getUintSchema(schema_name)
     });
 
@@ -64,6 +65,7 @@ describe('Engine', () => {
   it('supports hooks to modify internal data', () => {
     const engine = Engine.from({
       hooks: [data => data.set('root', data.get('root') * 2)],
+      rom_format: 'hirom',
       schemas: getUintSchema('root')
     });
 
