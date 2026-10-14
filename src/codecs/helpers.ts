@@ -5,7 +5,7 @@ import type {
   datasize,
   TypeNode,
   RomanceTypeInstance
-} from '../core/type-registry.js';
+} from '../core/codec-registry.js';
 
 type Dict <V = unknown> = Record<string, V>;
 type NumDict <V = unknown> = Record<number, V>;

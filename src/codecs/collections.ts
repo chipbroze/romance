@@ -8,9 +8,9 @@ import {
   CodecKit,
   type TypeNode,
   type RuntimeApi,
-} from '../core/type-registry.js';
+} from '../core/codec-registry.js';
 
-declare module '../core/type-registry.js' {
+declare module '../core/codec-registry.js' {
   interface MasterTypeRegistry {
     list: typeof List;
     struct: typeof Struct;

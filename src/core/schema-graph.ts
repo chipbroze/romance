@@ -2,8 +2,8 @@
 import { clone, transform } from '../utils/transform.js';
 import { hex } from '../codecs/helpers.js';
 import { EvilMap } from '../utils/map-utils.js';
-import { TypeNode } from './type-registry.js';
-import './types.js'; // Ensure types are registered
+import { TypeNode } from './codec-registry.js';
+import './codecs.js'; // Ensure types are registered
 import type { Rom } from './rom.js';
 import type {
   RomanceType,
@@ -15,7 +15,7 @@ import type {
   SessionApi,
   CompileApi,
   RuntimeApi
-} from './type-registry.js';
+} from './codec-registry.js';
 
 const transform_target = Symbol('transform_target');
 

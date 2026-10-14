@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import { describe, it } from '#test';
-import '#root/core/types.js';
-import { TypeRegistry } from '#root/core/type-registry.js';
+import '#root/core/codecs.js';
+import { TypeRegistry } from '#root/core/codec-registry.js';
 import { SchemaGraph } from '#root/core/schema-graph.js';
 import {
   Engine,

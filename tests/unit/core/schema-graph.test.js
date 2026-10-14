@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { describe, it } from '#test';
-import '#root/core/types.js';
+import '#root/core/codecs.js';
 import { SchemaGraph, SchemaNode } from '#root/core/schema-graph.js';
 
 describe('SchemaGraph', () => {

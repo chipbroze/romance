@@ -22,17 +22,17 @@ import {
 import {
   CodecKit,
   type TypeNode,
-} from '../core/type-registry.js';
+} from '../core/codec-registry.js';
 
 import type {
   datasize
-} from '../core/type-registry.js';
+} from '../core/codec-registry.js';
 
 import type {
   Uint
 } from './scalars.js';
 
-declare module '../core/type-registry.js' {
+declare module '../core/codec-registry.js' {
   interface MasterTypeRegistry {
     range: typeof Range;
     modifier: typeof Modifier;

@@ -9,7 +9,7 @@ import { list_mode_schema } from './collections.js';
 
 import {
   CodecKit
-} from '../core/type-registry.js';
+} from '../core/codec-registry.js';
 
 import { List } from './collections.js';
 import type { ListModeSpec } from './collections.js';
@@ -17,7 +17,7 @@ import type { Enum, Uint } from './scalars.js';
 import type { Script, ForkOptions, ForkDataFor } from './ops.js';
 import { Fork } from './ops.js';
 
-declare module '../core/type-registry.js' {
+declare module '../core/codec-registry.js' {
   interface MasterTypeRegistry {
     string: typeof TextStr;
     text_script: typeof TextScript;

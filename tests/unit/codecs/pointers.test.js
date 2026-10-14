@@ -1,5 +1,5 @@
 import { describe, it } from '#test';
-import { TypeTester } from '#tests/helpers/type-test.js';
+import { TypeTester } from '#tests/helpers/codec-test.js';
 import { Pointer, PointerIndex, PointerTable } from '#root/codecs/pointers.js';
 
 describe('Pointers', () => {

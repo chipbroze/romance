@@ -3,9 +3,9 @@ import { Lookup, hex, type Dict, type NumDict } from './helpers.js';
 import { type datasize } from '../core/rom.js';
 import {
   CodecKit,
-} from '../core/type-registry.js';
+} from '../core/codec-registry.js';
 
-declare module '../core/type-registry.js' {
+declare module '../core/codec-registry.js' {
   interface MasterTypeRegistry {
     empty: typeof Empty;
     static: typeof Static;

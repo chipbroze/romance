@@ -2,7 +2,7 @@
 
 import { SchemaGraph, type SchemaNode } from './schema-graph.js';
 import type { RomFormat } from './rom.js';
-import { TypeRegistry, type SessionApi } from './type-registry.js';
+import { TypeRegistry, type SessionApi } from './codec-registry.js';
 import { Rom } from './rom.js';
 import * as assert from '../utils/assert.js';
 

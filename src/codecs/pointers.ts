@@ -7,9 +7,9 @@ import type { Range } from './ops.js';
 import {
   CodecKit,
   type TypeNode,
-} from '../core/type-registry.js';
+} from '../core/codec-registry.js';
 
-declare module '../core/type-registry.js' {
+declare module '../core/codec-registry.js' {
   interface MasterTypeRegistry {
     dereference: typeof Dereference;
     list_index: typeof ListIndex;

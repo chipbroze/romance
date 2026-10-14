@@ -1,8 +1,8 @@
 import assert from 'node:assert';
-import '#root/core/types.js';
+import '#root/core/codecs.js';
 import { Rom } from '#root/core/rom.js';
 import { SchemaGraph } from '#root/core/schema-graph.js';
-import { TypeRegistry } from '#root/core/type-registry.js';
+import { TypeRegistry } from '#root/core/codec-registry.js';
 
 function coalesce (...arrays) {
   const sparse = arrays.map(array => {

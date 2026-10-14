@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { describe, it } from '#test';
-import { TypeTester } from '#tests/helpers/type-test.js';
+import { TypeTester } from '#tests/helpers/codec-test.js';
 import {
   Empty,
   Static,

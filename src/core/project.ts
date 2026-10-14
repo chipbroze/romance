@@ -1,7 +1,7 @@
 /* Project */
 
 import { Engine } from './engine.js';
-import { TypeRegistry } from './type-registry.js';
+import { TypeRegistry } from './codec-registry.js';
 import { SchemaGraph } from './schema-graph.js';
 import { CacheMap, EvilMap } from '../utils/map-utils.js';
 import { type RomFormat } from './rom.js';
