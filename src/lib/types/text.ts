@@ -219,7 +219,7 @@ const text_script_schema = v.object({
     v.object({
       name: v.string(),
       item: v.node(),
-      match: v.array(v.any()) // TODO
+      match: v.array(v.any())
     })
   )
 });
