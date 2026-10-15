@@ -14,21 +14,21 @@ describe('SchemaGraph', () => {
     })
   }
 
-  const mock_typeset = {
-    types: Object.fromEntries([
+  const mock_codex = {
+    codecs: Object.fromEntries([
       MethodName
-    ].map(Type => [Type.alias, Type])),
+    ].map(Codec => [Codec.alias, Codec])),
     has (alias) {
-      return alias in this.types;
+      return alias in this.codecs;
     },
     get (alias) {
-      return this.types[alias];
+      return this.codecs[alias];
     }
   };
 
   describe('Compilation', () => {
     it('throws when executing an uncompiled graph', () => {
-      const graph = new SchemaGraph('test', mock_typeset);
+      const graph = new SchemaGraph('test', mock_codex);
       assert.throws(
         () => graph.execute({}, root_node => root_node.format()),
         /Cannot read properties of null/
@@ -36,7 +36,7 @@ describe('SchemaGraph', () => {
     });
 
     it('successfully executes after compilation', () => {
-      const graph = new SchemaGraph('test', mock_typeset).compile({
+      const graph = new SchemaGraph('test', mock_codex).compile({
         $type: 'method_name',
         $name: 'testNode'
       });
@@ -50,7 +50,7 @@ describe('SchemaGraph', () => {
 
   describe('Runtime Execution', () => {
     it('binds and unbinds a session', () => {
-      const graph = new SchemaGraph('test', mock_typeset);
+      const graph = new SchemaGraph('test', mock_codex);
       const fetch_result = 'foobar';
       const session = { fetch: () => fetch_result };
       graph.bind(session);
@@ -66,7 +66,7 @@ describe('SchemaGraph', () => {
     });
 
     it('guarantees unbind on execution failure', () => {
-      const graph = new SchemaGraph('test', mock_typeset).compile({
+      const graph = new SchemaGraph('test', mock_codex).compile({
         $type: 'method_name',
         $name: 'node'
       });
@@ -84,10 +84,10 @@ describe('SchemaGraph', () => {
 
   describe('SchemaNode', () => {
     it('initializes and builds types correctly', () => {
-      const graph = new SchemaGraph('test', mock_typeset);
+      const graph = new SchemaGraph('test', mock_codex);
       const node = new SchemaNode({
         name: 'test',
-        Type: MethodName,
+        Codec: MethodName,
         args: {},
         root: graph
       });

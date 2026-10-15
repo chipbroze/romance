@@ -25,15 +25,15 @@ class Project {
   #explicit_profiles?: Record<string, ProfileConfig>;
   #rom_format: RomFormat;
 
-  constructor ({ typeset, schemas, hooks, profiles, rom_format }: {
-    typeset: CodecRegistry;
+  constructor ({ codex, schemas, hooks, profiles, rom_format }: {
+    codex: CodecRegistry;
     schemas: Map<string, { item: unknown }>;
     hooks: Map<string, Hook>;
     profiles?: ProfileRegistry | undefined;
     rom_format: RomFormat;
   }) {
     this.#schemas = new CacheMap(schemas.entries(), (id, schema) => {
-      return new SchemaGraph(id, typeset).compile(schema.item);
+      return new SchemaGraph(id, codex).compile(schema.item);
     });
     this.#hooks = hooks;
     this.#explicit_profiles = profiles || {};
@@ -48,7 +48,7 @@ class Project {
     rom_format: RomFormat;
   }): Project {
     return new Project({
-      typeset: new CodecRegistry(codecs),
+      codex: new CodecRegistry(codecs),
       schemas: EvilMap.from(schemas),
       hooks: EvilMap.from(hooks),
       profiles,

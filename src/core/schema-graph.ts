@@ -120,14 +120,14 @@ function isRecord (obj: unknown): obj is Dict {
 
 class SchemaGraph {
   #tree: SchemaNode | null;
-  #typeset: CodecRegistry;
+  #codex: CodecRegistry;
   #runtime: GraphRuntime | null;
   id: string;
   readonly compile_api: CompileApi
 
-  constructor (id: string, typeset: CodecRegistry) {
+  constructor (id: string, codex: CodecRegistry) {
     this.id = id;
-    this.#typeset = typeset;
+    this.#codex = codex;
     this.#tree = null;
     this.#runtime = null;
 
@@ -247,24 +247,24 @@ class SchemaGraph {
   }
 
   #getCodec (type: string): RomanceCodec {
-    if (!this.#typeset.has(type)) {
+    if (!this.#codex.has(type)) {
       throw new Error(`Invalid or unregistered codec identifier: ${type}`);
     }
 
-    return this.#typeset.get(type) as RomanceCodec;
+    return this.#codex.get(type) as RomanceCodec;
   }
 
   #node <
     Codec extends RomanceCodec,
     Args extends InputOf<Codec>
   > (
-    Type: Codec,
+    Codec: Codec,
     args: Args,
     name?: string
   ) {
     return new SchemaNode<Codec>({ 
       name: name || '',
-      Type,
+      Codec,
       args,
       root: this
     });
@@ -272,37 +272,37 @@ class SchemaGraph {
 }
 
 function validateArgs (
-  Type: RomanceCodec,
+  Codec: RomanceCodec,
   args: Dict
 ): Dict {
-  if (Type.isValidArgs && !Type.isValidArgs(args)) {
-    throw new Error(`Invalid args for type ${Type}: ${args}`);
+  if (Codec.isValidArgs && !Codec.isValidArgs(args)) {
+    throw new Error(`Invalid args for type ${Codec}: ${args}`);
   }
   return args;
 }
 
 class SchemaNode <
-  Type extends RomanceCodec = RomanceCodec,
-  Args extends InputOf<Type> = InputOf<Type>
+  Codec extends RomanceCodec = RomanceCodec,
+  Args extends InputOf<Codec> = InputOf<Codec>
 >
-  extends CodecNode<DataOf<Type, Args>, FormattedOf<Type, Args>>
+  extends CodecNode<DataOf<Codec, Args>, FormattedOf<Codec, Args>>
   implements StackNode
 {
   #name: string;
-  #Type: Type;
+  #Codec: Codec;
   #args: Dict;
   #root: SchemaGraph;
-  #item: CodecInstance<DataOf<Type, Args>, FormattedOf<Type, Args>> | null;
+  #item: CodecInstance<DataOf<Codec, Args>, FormattedOf<Codec, Args>> | null;
 
-  constructor ({ name, Type, args, root }: {
+  constructor ({ name, Codec, args, root }: {
     name: string,
-    Type: Type,
+    Codec: Codec,
     args: Args,
     root: SchemaGraph
   }) {
     super();
     this.#name = name;
-    this.#Type = Type;
+    this.#Codec = Codec;
     this.#args = args;
     this.#root = root;
     this.#item = null;
@@ -310,9 +310,9 @@ class SchemaNode <
 
   build (compile_api: CompileApi) {
     if (!this.#item) {
-      const args = validateArgs(this.#Type, this.#args);
-      this.#item = this.#Type.construct(args, compile_api) as (
-        CodecInstance<DataOf<Type, Args>, FormattedOf<Type, Args>>
+      const args = validateArgs(this.#Codec, this.#args);
+      this.#item = this.#Codec.construct(args, compile_api) as (
+        CodecInstance<DataOf<Codec, Args>, FormattedOf<Codec, Args>>
       );
     }
     return this;
@@ -334,30 +334,30 @@ class SchemaNode <
     return this.#name;
   }
   get type () {
-    return this.#Type.alias;
+    return this.#Codec.alias;
   }
   get kind () {
-    return this.#Type.kind;
+    return this.#Codec.kind;
   }
 
-  decode (rom: Rom): DataOf<Type, Args> {
+  decode (rom: Rom): DataOf<Codec, Args> {
     return this.#run((api: RuntimeApi) => {
       api.trace('offset', hex(rom.offset(), 'sword'));
       return this.#item!.decode(rom, api);
     });
   }
-  encode (value: DataOf<Type, Args>, rom: Rom): void {
+  encode (value: DataOf<Codec, Args>, rom: Rom): void {
     return this.#run((api: RuntimeApi) => {
       api.trace('offset', hex(rom.offset(), 'sword'));
       return this.#item!.encode(value, rom, api)
     });
   }
-  format (data: DataOf<Type, Args>): FormattedOf<Type, Args> {
+  format (data: DataOf<Codec, Args>): FormattedOf<Codec, Args> {
     return this.#run((api: RuntimeApi) => {
       return this.#item!.format(data, api);
     });
   }
-  parse (data: FormattedOf<Type, Args>): DataOf<Type, Args> {
+  parse (data: FormattedOf<Codec, Args>): DataOf<Codec, Args> {
     return this.#run((api: RuntimeApi) => {
       return this.#item!.parse(data, api);
     });
