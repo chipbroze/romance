@@ -2,16 +2,16 @@
 import { clone, transform } from '../utils/transform.js';
 import { hex } from '../codecs/helpers.js';
 import { EvilMap } from '../utils/map-utils.js';
-import { TypeNode } from './codec-registry.js';
+import { CodecNode } from './codec-registry.js';
 import './codecs.js'; // Ensure types are registered
 import type { Rom } from './rom.js';
 import type {
-  RomanceType,
-  RomanceTypeInstance,
+  RomanceCodec,
+  CodecInstance,
   InputOf,
   DataOf,
   FormattedOf,
-  TypeRegistry,
+  CodecRegistry,
   SessionApi,
   CompileApi,
   RuntimeApi
@@ -120,12 +120,12 @@ function isRecord (obj: unknown): obj is Dict {
 
 class SchemaGraph {
   #tree: SchemaNode | null;
-  #typeset: TypeRegistry;
+  #typeset: CodecRegistry;
   #runtime: GraphRuntime | null;
   id: string;
   readonly compile_api: CompileApi
 
-  constructor (id: string, typeset: TypeRegistry) {
+  constructor (id: string, typeset: CodecRegistry) {
     this.id = id;
     this.#typeset = typeset;
     this.#tree = null;
@@ -246,16 +246,16 @@ class SchemaGraph {
     return this.#node(Type, args, name).build(this.compile_api);
   }
 
-  #getType (type: string): RomanceType {
+  #getType (type: string): RomanceCodec {
     if (!this.#typeset.has(type)) {
       throw new Error(`Invalid or unregistered type identifier: ${type}`);
     }
 
-    return this.#typeset.get(type) as RomanceType;
+    return this.#typeset.get(type) as RomanceCodec;
   }
 
   #node <
-    Codec extends RomanceType,
+    Codec extends RomanceCodec,
     Args extends InputOf<Codec>
   > (
     Type: Codec,
@@ -272,7 +272,7 @@ class SchemaGraph {
 }
 
 function validateArgs (
-  Type: RomanceType,
+  Type: RomanceCodec,
   args: Dict
 ): Dict {
   if (Type.isValidArgs && !Type.isValidArgs(args)) {
@@ -282,17 +282,17 @@ function validateArgs (
 }
 
 class SchemaNode <
-  Type extends RomanceType = RomanceType,
+  Type extends RomanceCodec = RomanceCodec,
   Args extends InputOf<Type> = InputOf<Type>
 >
-  extends TypeNode<DataOf<Type, Args>, FormattedOf<Type, Args>>
+  extends CodecNode<DataOf<Type, Args>, FormattedOf<Type, Args>>
   implements StackNode
 {
   #name: string;
   #Type: Type;
   #args: Dict;
   #root: SchemaGraph;
-  #item: RomanceTypeInstance<DataOf<Type, Args>, FormattedOf<Type, Args>> | null;
+  #item: CodecInstance<DataOf<Type, Args>, FormattedOf<Type, Args>> | null;
 
   constructor ({ name, Type, args, root }: {
     name: string,
@@ -312,7 +312,7 @@ class SchemaNode <
     if (!this.#item) {
       const args = validateArgs(this.#Type, this.#args);
       this.#item = this.#Type.construct(args, compile_api) as (
-        RomanceTypeInstance<DataOf<Type, Args>, FormattedOf<Type, Args>>
+        CodecInstance<DataOf<Type, Args>, FormattedOf<Type, Args>>
       );
     }
     return this;

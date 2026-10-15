@@ -6,12 +6,12 @@ import type { Uint, Bool } from './scalars.js';
 import type { Custom, Range } from './ops.js';
 import {
   CodecKit,
-  type TypeNode,
+  type CodecNode,
   type RuntimeApi,
 } from '../core/codec-registry.js';
 
 declare module '../core/codec-registry.js' {
-  interface MasterTypeRegistry {
+  interface MasterCodecRegistry {
     list: typeof List;
     struct: typeof Struct;
     segment_list: typeof SegmentList;
@@ -28,7 +28,7 @@ declare module '../core/codec-registry.js' {
       {[F in Fs[number] as F['name']]: F['item']['<Formatted>'];}
     ] : never);
 
-    list_list: (Args extends { item: infer I extends TypeNode }
+    list_list: (Args extends { item: infer I extends CodecNode }
       ? [I['<Data>'][][], I['<Formatted>'][][]]
       : never
     );
@@ -110,7 +110,7 @@ type ListModeSpec <Data> = {
 }[keyof ListModeArgs<Data>];
 
 type ListArgs <
-  Item extends TypeNode = TypeNode
+  Item extends CodecNode = CodecNode
 > = {
   item: Item;
   mode: ListModeSpec<Item['<Data>']>;
@@ -161,13 +161,13 @@ const List = CodecKit.composite({
     }
     return true;
   },
-  construct: <Item extends TypeNode> (
+  construct: <Item extends CodecNode> (
     { item, mode }: ListArgs<Item>
   ) => {
     type ItemData = Item['<Data>'];
     type ItemFormatted = Item['<Formatted>'];
 
-    const $item = item as TypeNode<ItemData, ItemFormatted>;
+    const $item = item as CodecNode<ItemData, ItemFormatted>;
     const meta = resolveListMode<ItemData>(mode);
     const trace = (i: number, api: RuntimeApi) => {
       api.trace('list_index', i.toString());
@@ -218,7 +218,7 @@ const List = CodecKit.composite({
 
 type StructField <N extends string = string> = {
   readonly name: N;
-  readonly item: TypeNode;
+  readonly item: CodecNode;
 };
 type FieldTuple = readonly StructField[];
 type StructArgs <
@@ -351,7 +351,7 @@ const Struct = CodecKit.composite({
   }
 });
 
-type SegmentListArgs <Item extends TypeNode = TypeNode> = {
+type SegmentListArgs <Item extends CodecNode = CodecNode> = {
   item: Item;
   length: number;
   org: number;
@@ -382,13 +382,13 @@ const SegmentList = CodecKit.from<{
     v.assert(segment_list_schema, args);
     return true;
   },
-  construct <Item extends TypeNode> (
+  construct <Item extends CodecNode> (
     { item, length, org, base, warn, size }: SegmentListArgs<Item>,
     api: typeof Kit.Api
   ) {
     type ItemData = Item['<Data>'];
     type ItemFormatted = Item['<Formatted>'];
-    const $item = item as TypeNode<ItemData, ItemFormatted>;
+    const $item = item as CodecNode<ItemData, ItemFormatted>;
     const $warn = warn == null ? {} : { warn };
 
     size ??= 'word';
@@ -620,7 +620,7 @@ const Bitfield = CodecKit.from<{
   }
 }));
 
-type StructOfArrays <S extends TypeNode> = TypeNode<
+type StructOfArrays <S extends CodecNode> = CodecNode<
   S['<Data>'] & Dict<unknown[]>,
   S['<Formatted>'] & Dict<unknown[]>
 >;
@@ -834,7 +834,7 @@ const Bitmask = CodecKit.from<{
   }
 }));
 
-type BitlistArgs <Item extends TypeNode = TypeNode> = {
+type BitlistArgs <Item extends CodecNode = CodecNode> = {
   item: Item;
   length: number;
   bitsize: number;
@@ -862,7 +862,7 @@ const Bitlist = CodecKit.from<{
     }
     return true;
   },
-  construct <Item extends TypeNode> (
+  construct <Item extends CodecNode> (
     { item, length, bitsize, pad }: BitlistArgs<Item>,
     api: typeof Kit.Api
   ) {

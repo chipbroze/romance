@@ -6,11 +6,11 @@ import type { List } from './collections.js';
 import type { Range } from './ops.js';
 import {
   CodecKit,
-  type TypeNode,
+  type CodecNode,
 } from '../core/codec-registry.js';
 
 declare module '../core/codec-registry.js' {
-  interface MasterTypeRegistry {
+  interface MasterCodecRegistry {
     dereference: typeof Dereference;
     list_index: typeof ListIndex;
     pointer: typeof Pointer;
@@ -20,8 +20,8 @@ declare module '../core/codec-registry.js' {
 }
 
 type DereferenceArgs <
-  Item extends TypeNode = TypeNode,
-  Ref extends TypeNode = TypeNode,
+  Item extends CodecNode = CodecNode,
+  Ref extends CodecNode = CodecNode,
 > = {
   item: Item;
   reference: Ref;
@@ -49,7 +49,7 @@ const Dereference = CodecKit.composite({
     v.assert(dereference_schema, args);
     return true;
   },
-  construct <Item extends TypeNode, Ref extends TypeNode> (
+  construct <Item extends CodecNode, Ref extends CodecNode> (
     input: DereferenceArgs<Item, Ref>
   ) {
     const $item = asNode(input.item);
@@ -91,7 +91,7 @@ const Dereference = CodecKit.composite({
   }
 });
 
-type ListIndexArgs <Item extends TypeNode = TypeNode> = {
+type ListIndexArgs <Item extends CodecNode = CodecNode> = {
   org: number;
   warn?: number;
   base?: number;
@@ -120,7 +120,7 @@ const ListIndex = CodecKit.from<{
     v.assert(list_index_schema, args);
     return true;
   },
-  construct <Item extends TypeNode> (
+  construct <Item extends CodecNode> (
     { org, warn, base, chunk, item, size }: ListIndexArgs<Item>,
     api: typeof Kit.Api
   ) {
@@ -141,7 +141,7 @@ const ListIndex = CodecKit.from<{
 }));
 
 type PointerArgs <
-  Item extends TypeNode = TypeNode
+  Item extends CodecNode = CodecNode
 > = Omit<ListIndexArgs<Item>, 'chunk'>;
 
 const pointer_schema = v.object({
@@ -162,7 +162,7 @@ const Pointer = CodecKit.from<{
     v.assert(pointer_schema, args);
     return true;
   },
-  construct <Item extends TypeNode> (
+  construct <Item extends CodecNode> (
     args: PointerArgs<Item>,
     api: typeof Kit.Api
   ) {
@@ -177,7 +177,7 @@ const Pointer = CodecKit.from<{
 }));
 
 type PointerIndexArgs <
-  Item extends TypeNode = TypeNode
+  Item extends CodecNode = CodecNode
 > = PointerArgs<Item> & {
   pointers_org: number;
   pointers_base?: number;
@@ -206,7 +206,7 @@ const PointerIndex = CodecKit.from<{
     v.assert(pointer_index_schema, args);
     return true;
   },
-  construct <Item extends TypeNode> (
+  construct <Item extends CodecNode> (
     input: PointerIndexArgs<Item>,
     api: typeof Kit.Api
   ) {
@@ -230,7 +230,7 @@ const PointerIndex = CodecKit.from<{
   }
 }));
 
-type PointerTableArgs <Item extends TypeNode = TypeNode> = {
+type PointerTableArgs <Item extends CodecNode = CodecNode> = {
   item: Item;
   length: number;
   org: number;
@@ -261,7 +261,7 @@ const PointerTable = CodecKit.from<{
     v.assert(pointer_table_schema, args);
     return true;
   },
-  construct <Item extends TypeNode> (
+  construct <Item extends CodecNode> (
     { item, length, org, warn, wrap, base }: PointerTableArgs<Item>,
     api: typeof Kit.Api
   ) {

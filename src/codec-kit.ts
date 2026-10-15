@@ -1,9 +1,9 @@
 export {
   CodecKit,
-  TypeNode
+  CodecNode
 } from './core/codec-registry.js';
 
 export type {
-  RomanceTypeInstance,
+  CodecInstance,
   datasize
 } from './core/codec-registry.js';

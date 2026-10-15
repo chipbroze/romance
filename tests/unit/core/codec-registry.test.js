@@ -1,9 +1,9 @@
 import assert from 'node:assert';
 import { describe, it } from '#test';
 import '#root/core/codecs.js';
-import { TypeRegistry } from '#root/core/codec-registry.js';
+import { CodecRegistry } from '#root/core/codec-registry.js';
 
-describe('TypeRegistry', () => {
+describe('CodecRegistry', () => {
   it('registers types with all required methods and alias', () => {
     const ValidCodec = {
       alias: 'valid',
@@ -14,7 +14,7 @@ describe('TypeRegistry', () => {
         parse() {}
       })
     };
-    const registry = new TypeRegistry([ValidCodec]);
+    const registry = new CodecRegistry([ValidCodec]);
     assert.strictEqual(registry.get('valid'), ValidCodec);
   });
 
@@ -29,7 +29,7 @@ describe('TypeRegistry', () => {
       })
     };
     assert.throws(
-      () => new TypeRegistry([InvalidCodec]),
+      () => new CodecRegistry([InvalidCodec]),
       /Expected "alias" to be type: string/
     );
   });
@@ -39,7 +39,7 @@ describe('TypeRegistry', () => {
       alias: 'invalid'
     };
     assert.throws(
-      () => new TypeRegistry([InvalidCodec]),
+      () => new CodecRegistry([InvalidCodec]),
       /Missing "construct" function/
     );
   });

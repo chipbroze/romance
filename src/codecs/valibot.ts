@@ -1,6 +1,6 @@
 import * as v from 'valibot';
 import { Rom } from '../core/rom.js';
-import { TypeNode } from '../core/codec-registry.js';
+import { CodecNode } from '../core/codec-registry.js';
 
 export * from 'valibot';
 
@@ -30,5 +30,5 @@ export const num_dict = <
   value_schema
 );
 
-export const node = () => v.instance(TypeNode as v.Class);
+export const node = () => v.instance(CodecNode as v.Class);
 export const datasize = () => v.picklist(Rom.datasizes);

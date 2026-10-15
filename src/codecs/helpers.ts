@@ -3,8 +3,8 @@
 import { Rom } from '../core/rom.js';
 import type {
   datasize,
-  TypeNode,
-  RomanceTypeInstance
+  CodecNode,
+  CodecInstance
 } from '../core/codec-registry.js';
 
 type Dict <V = unknown> = Record<string, V>;
@@ -127,12 +127,12 @@ function isObj (x: unknown): x is Record<string, unknown> {
 function isStr (x: unknown): x is string {
   return typeof x === 'string';
 }
-function asNode <Item extends TypeNode> (item: Item) {
-  return item as TypeNode<Item['<Data>'], Item['<Formatted>']>;
+function asNode <Item extends CodecNode> (item: Item) {
+  return item as CodecNode<Item['<Data>'], Item['<Formatted>']>;
 }
 function passthrough <Data, Formatted> (
-  node: TypeNode<Data, Formatted>
-): RomanceTypeInstance<Data, Formatted> {
+  node: CodecNode<Data, Formatted>
+): CodecInstance<Data, Formatted> {
   return {
     decode: (rom) => node.decode(rom),
     encode: (data, rom) => node.encode(data, rom),

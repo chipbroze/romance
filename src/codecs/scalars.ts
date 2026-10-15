@@ -6,7 +6,7 @@ import {
 } from '../core/codec-registry.js';
 
 declare module '../core/codec-registry.js' {
-  interface MasterTypeRegistry {
+  interface MasterCodecRegistry {
     empty: typeof Empty;
     static: typeof Static;
     uint: typeof Uint;

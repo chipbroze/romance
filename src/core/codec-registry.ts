@@ -21,26 +21,26 @@ type SessionApi = {
 };
 
 interface CompileApi <
-  TypeRegistry extends object = object
+  CodecRegistry extends object = object
 > {
   item <
-    Alias extends keyof TypeRegistry,
-    Args extends InputOf<TypeRegistry[Alias]>
+    Alias extends keyof CodecRegistry,
+    Args extends InputOf<CodecRegistry[Alias]>
   > (
     type: Alias | { type: Alias, name: string },
     args: CodecConstraint<Alias, Args>
   // `extends infer Codec` forces TS to resolve lazy indexed types
   // immediately, avoiding `unknown` parameter inference in downstream codecs.
-  ): (TypeRegistry[Alias] extends infer Codec
+  ): (CodecRegistry[Alias] extends infer Codec
     ? CodecNodeFor<Codec, Args>
     : never
   );
 };
 
 type RuntimeApi <
-  TypeRegistry extends object = object
+  CodecRegistry extends object = object
 > = {
-  item: CompileApi<TypeRegistry>['item'];
+  item: CompileApi<CodecRegistry>['item'];
   trace: (key: string, value: unknown) => void;
   scratch: <T> (create: () => T) => T;
   getLib: SessionApi['getLib'];
@@ -65,11 +65,11 @@ type CodecConstraint <Alias, Args> = (
 
 // TODO: Can Construct be de-generic-ified now?
 interface CodecRules <Args=Dict> {
-  list: (Args extends { item: infer I extends TypeNode }
+  list: (Args extends { item: infer I extends CodecNode }
     ? [I['<Data>'][], I['<Formatted>'][]]
     : never
   );
-  item: (Args extends { item: infer I extends TypeNode }
+  item: (Args extends { item: infer I extends CodecNode }
     ? [I['<Data>'], I['<Formatted>']]
     : never
   );
@@ -84,7 +84,7 @@ type RuleTuple <Codec, Args> = (
 );
 type TupleNode <T> = (
   T extends [infer D, infer F]
-  ? TypeNode<D, F>
+  ? CodecNode<D, F>
   : never
 );
 type CodecNodeFor <Codec, Args> = (
@@ -94,15 +94,15 @@ type AliasNode <Alias extends CodecAlias, Args> = (
   CodecNodeFor<MasterRegistry[Alias], Args>
 );
 
-type RomanceTypeInstance <
+type CodecInstance <
   Data = unknown,
   Formatted = Data,
-  TypeRegistry extends object = MasterRegistry
+  CodecRegistry extends object = MasterRegistry
 > = {
-  decode: (rom: Rom, api: RuntimeApi<TypeRegistry>) => Data;
-  encode: (data: Data, rom: Rom, api: RuntimeApi<TypeRegistry>) => void;
-  format: (data: Data, api: RuntimeApi<TypeRegistry>) => Formatted;
-  parse: (formatted: Formatted, api: RuntimeApi<TypeRegistry>) => Data;
+  decode: (rom: Rom, api: RuntimeApi<CodecRegistry>) => Data;
+  encode: (data: Data, rom: Rom, api: RuntimeApi<CodecRegistry>) => void;
+  format: (data: Data, api: RuntimeApi<CodecRegistry>) => Formatted;
+  parse: (formatted: Formatted, api: RuntimeApi<CodecRegistry>) => Data;
 };
 
 type SimpleCodec <
@@ -128,7 +128,7 @@ type SimpleCodec <
   construct (
     args: Args,
     api: CompileApi<Config['registry']>
-  ): RomanceTypeInstance<Data, Formatted, Config['registry']>;
+  ): CodecInstance<Data, Formatted, Config['registry']>;
 };
 
 type ConstructConstraint <
@@ -138,7 +138,7 @@ type ConstructConstraint <
   args: ArgsShape,
   api: CompileApi<Config['registry']>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-) => RomanceTypeInstance<any, any, Config['registry']>;
+) => CodecInstance<any, any, Config['registry']>;
 
 type CompositeCodec <
   Alias extends string = string,
@@ -174,7 +174,7 @@ type RuntimeConfig <C extends CodecConfig> = (
   Omit<C, 'registry'> & { registry: MasterRegistry }
 );
 
-const registered_codecs = new Map<string, RomanceType>();
+const registered_codecs = new Map<string, RomanceCodec>();
 
 class CodecKit <
   Config extends CodecConfig = CodecConfig
@@ -196,7 +196,7 @@ class CodecKit <
   }
 
   // Runtime (JS) Codec Registration
-  register (...codecs: AnyRomanceType[]) {
+  register (...codecs: AnyRomanceCodec[]) {
     for (const codec of codecs) {
       assertRomanceCodec(codec);
       if (!registered_codecs.has(codec.alias)) {
@@ -261,20 +261,20 @@ class CodecKit <
 
   // Ergonomic typing helper for composite instance objects
   instance <Data, Formatted = Data> (
-    instance: RomanceTypeInstance<Data, Formatted, Config['registry']>
-  ): RomanceTypeInstance<Data, Formatted, Config['registry']> {
+    instance: CodecInstance<Data, Formatted, Config['registry']>
+  ): CodecInstance<Data, Formatted, Config['registry']> {
     return instance;
   }
 };
 
 // ###########################################################################
-// Master Type Registry
+// Master Codec Registry
 // ###########################################################################
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface MasterTypeRegistry {}
+interface MasterCodecRegistry {}
 
-type MasterRegistry = MasterTypeRegistry;
+type MasterRegistry = MasterCodecRegistry;
 type CodecAlias = keyof MasterRegistry;
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -291,7 +291,7 @@ type DataOf <Codec, Args = InputOf<Codec>> = RuleTuple<Codec, Args>[0];
 type FormattedOf <Codec, Args = InputOf<Codec>> = RuleTuple<Codec, Args>[1];
 type InputByAlias <Alias extends CodecAlias> = InputOf<MasterRegistry[Alias]>;
 
-abstract class TypeNode <Data = unknown, Formatted = Data> {
+abstract class CodecNode <Data = unknown, Formatted = Data> {
   declare readonly '<Data>': Data;
   declare readonly '<Formatted>': Formatted;
 
@@ -302,63 +302,63 @@ abstract class TypeNode <Data = unknown, Formatted = Data> {
   abstract parse (formatted: Formatted): Data;
 }
 
-class TypeRegistry {
-  #types: Map<string, RomanceType> = new Map();
+class CodecRegistry {
+  #codecs: Map<string, RomanceCodec> = new Map();
 
-  constructor (extra_types: unknown[] = []) {
-    const all_types = [
+  constructor (extra_codecs: unknown[] = []) {
+    const all_codecs = [
       ...registered_codecs.values(),
-      ...extra_types
+      ...extra_codecs
     ];
-    for (const romance_type of all_types) {
-      assertRomanceCodec(romance_type);
-      this.#types.set(romance_type.alias, romance_type);
+    for (const romance_codec of all_codecs) {
+      assertRomanceCodec(romance_codec);
+      this.#codecs.set(romance_codec.alias, romance_codec);
     }
   }
 
   has (type: unknown): type is CodecAlias {
-    return typeof type === 'string' && this.#types.has(type);
+    return typeof type === 'string' && this.#codecs.has(type);
   }
 
   get <T extends CodecAlias> (type: T): MasterRegistry[T] {
-    return this.#types.get(type) as MasterRegistry[T];
+    return this.#codecs.get(type) as MasterRegistry[T];
   }
 }
 
 function assertRomanceCodec (
   unknown: unknown
-): asserts unknown is RomanceType {
+): asserts unknown is RomanceCodec {
   if (!unknown || typeof unknown !== 'object') {
-    throw new Error('Invalid Type: Expected object definition');
+    throw new Error('Invalid Codec: Expected object definition');
   }
   if (typeof (unknown as Dict).alias !== 'string') {
-    throw new Error('Invalid Type: Expected "alias" to be type: string');
+    throw new Error('Invalid Codec: Expected "alias" to be type: string');
   }
   if (typeof (unknown as Dict).construct !== 'function') {
     const alias = (unknown as Dict).alias;
-    throw new Error(`Invalid Type "${alias}": Missing "construct" function`);
+    throw new Error(`Invalid Codec "${alias}": Missing "construct" function`);
   }
   // TODO: Validate decode/encode/format/parse methods
 }
 
-type RomanceType = SimpleCodec | CompositeCodec;
-type AnyRomanceType = AnySimpleCodec | AnyCompositeCodec;
+type RomanceCodec = SimpleCodec | CompositeCodec;
+type AnyRomanceCodec = AnySimpleCodec | AnyCompositeCodec;
 
 export {
-  TypeRegistry,
-  TypeNode,
+  CodecRegistry,
+  CodecNode,
   CodecKit,
   Rom // TODO: Bundle all necessary types in one easy module
 };
 export type {
   AliasNode,
   CodecAlias,
-  MasterTypeRegistry,
+  MasterCodecRegistry,
   CodecRules,
   CodecConstraint,
   CodecConstraints,
-  RomanceType,
-  RomanceTypeInstance,
+  RomanceCodec,
+  CodecInstance,
   SessionApi,
   CompileApi,
   RuntimeApi,

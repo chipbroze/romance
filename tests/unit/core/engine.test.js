@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import { describe, it } from '#test';
 import '#root/core/codecs.js';
-import { TypeRegistry } from '#root/core/codec-registry.js';
+import { CodecRegistry } from '#root/core/codec-registry.js';
 import { SchemaGraph } from '#root/core/schema-graph.js';
 import {
   Engine,
@@ -26,7 +26,7 @@ function createMockGraph (id, methods = {}) {
       }
     }
   }
-  const registry = new TypeRegistry([MockCodec]);
+  const registry = new CodecRegistry([MockCodec]);
   return new SchemaGraph(id, registry).compile({ $type: id, $name: id });
 }
 

@@ -21,7 +21,7 @@ import {
 
 import {
   CodecKit,
-  type TypeNode,
+  type CodecNode,
 } from '../core/codec-registry.js';
 
 import type {
@@ -33,7 +33,7 @@ import type {
 } from './scalars.js';
 
 declare module '../core/codec-registry.js' {
-  interface MasterTypeRegistry {
+  interface MasterCodecRegistry {
     range: typeof Range;
     modifier: typeof Modifier;
     view: typeof View;
@@ -71,12 +71,12 @@ declare module '../core/codec-registry.js' {
 
   // interface CompileApi <TypeRegistry extends object = object> {
   //   item <
-  //     ControlNode extends TypeNode<ForkControl, unknown>,
+  //     ControlNode extends CodecNode<ForkControl, unknown>,
   //     const Options extends ForkOptions<ControlNode['<Data>']>
   //   > (
   //     alias: 'fork',
   //     args: ForkArgs<ControlNode, Options>
-  //   ): TypeNode<
+  //   ): CodecNode<
   //     ForkDataFor<ControlNode['<Data>'], Options>,
   //     ForkFormattedFor<ControlNode['<Data>'], Options>
   //   >
@@ -87,7 +87,7 @@ type CompileApi = typeof CodecKit.Complete.Api;
 type RuntimeApi = typeof CodecKit.Complete.RuntimeApi;
 /*
 const api = {} as typeof CodecKit.Complete.Api;
-const empty = {} as TypeNode<number, number>;
+const empty = {} as CodecNode<number, number>;
 const tests = {
   fork: api.item('fork', {
     control: empty,
@@ -120,7 +120,7 @@ const tests = {
     from: ['items'],
     toNode: function (self, { items }, api) {
       return api.item('list', {
-        item: self.item as TypeNode<number, number>,
+        item: self.item as CodecNode<number, number>,
         mode: {
           key: 'length',
           arg: (items as Array<Dict>).length
@@ -135,7 +135,7 @@ console.log(tests);
 
 /* Range */
 
-type RangeArgs <Item extends TypeNode = TypeNode> = {
+type RangeArgs <Item extends CodecNode = CodecNode> = {
   item: Item;
   org: number;
   warn?: number;
@@ -158,7 +158,7 @@ const Range = CodecKit.composite({
     }
     return true;
   },
-  construct <Item extends TypeNode> (
+  construct <Item extends CodecNode> (
     { org, warn, item }: RangeArgs<Item>
   ) {
     const hex_org = hex(org, 'sword');
@@ -192,7 +192,7 @@ const Range = CodecKit.composite({
 /* Modifier */
 
 type ModifierArgs <
-  Item extends TypeNode = TypeNode,
+  Item extends CodecNode = CodecNode,
   Self extends Dict = Dict
 > = {
   item: Item;
@@ -217,7 +217,7 @@ const Modifier = CodecKit.composite({
     return true;
   },
   construct <
-    Item extends TypeNode,
+    Item extends CodecNode,
     Self extends Dict
   > (
     { item, self, decoder, encoder }: ModifierArgs<Item, Self>
@@ -241,7 +241,7 @@ const Modifier = CodecKit.composite({
 /* View */
 
 type ViewArgs <
-  Item extends TypeNode = TypeNode,
+  Item extends CodecNode = CodecNode,
   F = unknown
 > = {
   item: Item;
@@ -266,7 +266,7 @@ const View = CodecKit.composite({
     return true;
   },
   construct <
-    Item extends TypeNode,
+    Item extends CodecNode,
     Formatted
   > (
     { item, self, formatter, parser }: ViewArgs<Item, Formatted>
@@ -351,7 +351,7 @@ type ForkMatchFunction = (value: unknown) => boolean;
 type ForkMatch <T> = T | ForkMatchRange | ForkMatchFunction;
 type ForkOption <ControlData extends ForkControl> = {
   name: string;
-  item: TypeNode;
+  item: CodecNode;
   match: ForkMatch<ControlData>[];
   omit_control?: boolean;
 };
@@ -360,8 +360,8 @@ type ForkOptions <
 > = readonly ForkOption<ControlData>[];
 
 type ForkArgs <
-  ControlNode extends TypeNode<ForkControl, unknown> =
-    TypeNode<ForkControl, unknown>,
+  ControlNode extends CodecNode<ForkControl, unknown> =
+    CodecNode<ForkControl, unknown>,
   Options extends ForkOptions<ControlNode['<Data>']> =
     ForkOptions<ControlNode['<Data>']>
 > = {
@@ -479,7 +479,7 @@ const Fork = CodecKit.composite({
     return true;
   },
   construct <
-    ControlNode extends TypeNode<ForkControl, unknown>,
+    ControlNode extends CodecNode<ForkControl, unknown>,
     const Options extends ForkOptions<ControlNode['<Data>']>
   > ({ control, options }: ForkArgs<ControlNode, Options>) {
     type OptionLookup = {
@@ -597,7 +597,7 @@ const Fork = CodecKit.composite({
 /* Script */
 
 type ScriptArgs <
-  ControlNode extends TypeNode<ForkControl, unknown> = TypeNode<ForkControl, unknown>,
+  ControlNode extends CodecNode<ForkControl, unknown> = CodecNode<ForkControl, unknown>,
   Options extends ForkOptions<ControlNode['<Data>']> = ForkOptions<ControlNode['<Data>']>
 > = ForkArgs<ControlNode, Options> & {
   mode: ListModeSpec<ForkDataFor<ControlNode['<Data>'], Options>>
@@ -632,7 +632,7 @@ const Script = CodecKit.from<{
     return true;
   },
   construct <
-    ControlNode extends TypeNode<ForkControl, unknown>,
+    ControlNode extends CodecNode<ForkControl, unknown>,
     const Options extends ForkOptions<ControlNode['<Data>']>
   > (
     args: ScriptArgs<ControlNode, Options>,
@@ -664,7 +664,7 @@ type ResolverArgs <
     self: Self,
     data: Record<From[number], unknown>,
     api: RuntimeApi
-  ) => TypeNode<Data, Formatted>
+  ) => CodecNode<Data, Formatted>
 };
 
 const resolver_schema = v.object({
@@ -697,7 +697,7 @@ const Resolver = CodecKit.Complete.composite({
   ) {
     const $getNode = (
       api: typeof CodecKit.Complete.RuntimeApi
-    ): TypeNode => {
+    ): CodecNode => {
       return api.scratch(() => {
         const data = Object.fromEntries(
           from.map(schema_id => [schema_id, api.fetch(schema_id)])

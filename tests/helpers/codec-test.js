@@ -2,7 +2,7 @@ import assert from 'node:assert';
 import '#root/core/codecs.js';
 import { Rom } from '#root/core/rom.js';
 import { SchemaGraph } from '#root/core/schema-graph.js';
-import { TypeRegistry } from '#root/core/codec-registry.js';
+import { CodecRegistry } from '#root/core/codec-registry.js';
 
 function coalesce (...arrays) {
   const sparse = arrays.map(array => {
@@ -37,7 +37,7 @@ class TypeTester {
   #graph; #session_api;
 
   constructor (session_api = {}) {
-    const registry = new TypeRegistry();
+    const registry = new CodecRegistry();
     const api = {
       getLib: session_api.getLib?.bind(session_api),
       setLib: session_api.setLib?.bind(session_api),
