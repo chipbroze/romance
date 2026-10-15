@@ -34,7 +34,7 @@ Today, Romance supports:
 Future versions are expected to support:
 
 * Browser-based editors generated directly from schema definitions
-* Rich type-specific form rendering
+* Rich codec-specific form rendering
 * Interactive validation and editing tools
 
 The same schema graph should be usable across all interfaces.
@@ -121,7 +121,7 @@ A Project represents a configured repository of resources.
 A Project owns:
 
 * schemas
-* custom types
+* custom codecs
 * hooks
 * profiles
 
@@ -156,11 +156,11 @@ In the future, compilation may move into the Project layer so compiled schema gr
 
 ---
 
-## Type Graph
+## Codec Graph
 
-The type graph is the executable representation of a schema.
+The codec graph is the executable representation of a schema.
 
-Schemas are authored declaratively and compiled into a graph of type instances.
+Schemas are authored declaratively and compiled into a graph of codec instances.
 
 The graph is traversed by the Engine during:
 
@@ -169,7 +169,7 @@ The graph is traversed by the Engine during:
 * parse
 * format
 
-Types are the fundamental building blocks of the system.
+Codecs are the fundamental building blocks of the system.
 
 Examples include:
 
@@ -179,9 +179,9 @@ Examples include:
 * Fork
 * PointerTable
 * Tile
-* project-defined custom types
+* project-defined custom codecs
 
-All types support four primary operations:
+All codecs support four primary operations:
 
 * decode()
 * encode()
@@ -304,7 +304,7 @@ The same schema definitions should support command-line tools, programmatic APIs
 
 ## Related Documents
 
-* type-system.md
+* codec-system.md
 * schema-system.md
 * frontend.md
 
