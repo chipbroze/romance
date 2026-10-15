@@ -316,12 +316,12 @@ class CodecRegistry {
     }
   }
 
-  has (type: unknown): type is CodecAlias {
-    return typeof type === 'string' && this.#codecs.has(type);
+  has (alias: unknown): alias is CodecAlias {
+    return typeof alias === 'string' && this.#codecs.has(alias);
   }
 
-  get <T extends CodecAlias> (type: T): MasterRegistry[T] {
-    return this.#codecs.get(type) as MasterRegistry[T];
+  get <T extends CodecAlias> (alias: T): MasterRegistry[T] {
+    return this.#codecs.get(alias) as MasterRegistry[T];
   }
 }
 

@@ -221,9 +221,9 @@ class SchemaGraph {
   // Runtime schema normalization, limited type safety
   #compileNode (spec: NodeSpec): SchemaNode {
     const { $type: type, $name: name = '', ...args } = spec;
-    const Type = this.#getType(type);
-    const normalized_args = Type.normalizeArgs?.(args) ?? args;
-    return this.#node(Type, normalized_args, name);
+    const Codec = this.#getCodec(type);
+    const normalized_args = Codec.normalizeArgs?.(args) ?? args;
+    return this.#node(Codec, normalized_args, name);
   }
 
   // Compile-time type checking in type definitions
@@ -241,14 +241,14 @@ class SchemaGraph {
       throw new Error('Item args must be an object');
     }
     const { type, name } = meta;
-    const Type = this.#getType(type);
+    const Codec = this.#getCodec(type);
 
-    return this.#node(Type, args, name).build(this.compile_api);
+    return this.#node(Codec, args, name).build(this.compile_api);
   }
 
-  #getType (type: string): RomanceCodec {
+  #getCodec (type: string): RomanceCodec {
     if (!this.#typeset.has(type)) {
-      throw new Error(`Invalid or unregistered type identifier: ${type}`);
+      throw new Error(`Invalid or unregistered codec identifier: ${type}`);
     }
 
     return this.#typeset.get(type) as RomanceCodec;

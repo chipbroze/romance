@@ -50,12 +50,12 @@ export class RomanceError extends Error {
 export class RomanceSchemaError extends RomanceError {}
 
 /**
- * 2. Type system violations at runtime
+ * 2. Codec system violations at runtime
  * - enum mismatch
  * - struct shape mismatch
  * - invalid codec output/input
  */
-export class RomanceTypeError extends RomanceError {}
+export class RomanceCodecError extends RomanceError {}
 
 /**
  * 3. Decode (ROM → IR) failures

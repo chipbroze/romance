@@ -285,9 +285,9 @@ class Engine {
     schemas: Map<string, { item: unknown }>;
     rom_format: RomFormat;
   }): Engine {
-    const type_registry = new CodecRegistry([]);
+    const codec_registry = new CodecRegistry([]);
     const schema_graphs = new Map([...schemas.entries()].map(([id, schema]) => {
-      return [id, new SchemaGraph(id, type_registry).compile(schema.item)];
+      return [id, new SchemaGraph(id, codec_registry).compile(schema.item)];
     }));
     return new Engine({
       hooks,
