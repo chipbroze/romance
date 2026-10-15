@@ -33,7 +33,7 @@ function getRom (buffer) {
   });
 }
 
-class TypeTester {
+class CodecTester {
   #graph; #session_api;
 
   constructor (session_api = {}) {
@@ -63,7 +63,7 @@ class TypeTester {
    * context: Optional uint array with additional layer of binary data
               required for accurate decode, such as for lookaheads.
    */
-  assertType (type, config) {
+  assertCodec (codec, config) {
     const {
       uints,
       data,
@@ -74,104 +74,104 @@ class TypeTester {
     const full = context ? coalesce(uints, context) : uints;
     const reset = this.#reset.bind(this);
   
-    verifyDecode(type, { uints: full, data });
+    verifyDecode(codec, { uints: full, data });
     reset();
-    verifyEncode(type, { uints, data });
+    verifyEncode(codec, { uints, data });
     reset();
-    verifyRoundtripDecode(type, { uints: full, context }, reset);
+    verifyRoundtripDecode(codec, { uints: full, context }, reset);
     reset();
-    verifyRoundtripEncode(type, { uints, data, context }, reset);
+    verifyRoundtripEncode(codec, { uints, data, context }, reset);
     reset();
-    verifyFormat(type, { data, readable });
+    verifyFormat(codec, { data, readable });
     reset();
-    verifyParse(type, { data, readable });
+    verifyParse(codec, { data, readable });
     reset();
-    verifyRoundtripFormat(type, { data }, reset);
+    verifyRoundtripFormat(codec, { data }, reset);
     reset();
-    verifyRoundtripParse(type, { readable }, reset);
+    verifyRoundtripParse(codec, { readable }, reset);
     reset();
   }
 }
 
-function verifyDecode (type, { uints, data }) {
+function verifyDecode (codec, { uints, data }) {
   const buffer = new Uint8Array(uints);
   const rom = getRom(buffer);
-  assert.deepStrictEqual(type.decode(rom), data,
+  assert.deepStrictEqual(codec.decode(rom), data,
     'Decode accuracy failed'
   );
 }
 
-function verifyEncode (type, { uints, data }) {
+function verifyEncode (codec, { uints, data }) {
   const buffer = new Uint8Array(uints.length);
   const rom = getRom(buffer);
-  type.encode(data, rom);
+  codec.encode(data, rom);
   assert.deepStrictEqual(buffer, new Uint8Array(uints),
     'Encode accuracy failed'
   );
 }
 
-function verifyRoundtripDecode (type, { uints, context }, reset) {
+function verifyRoundtripDecode (codec, { uints, context }, reset) {
   const buffer = new Uint8Array(uints);
   const rom = getRom(buffer);
-  const decoded = type.decode(rom);
+  const decoded = codec.decode(rom);
   reset();
   const reencoded = new Uint8Array(context || uints.length);
   const reencode_rom = getRom(reencoded);
-  type.encode(decoded, reencode_rom);
+  codec.encode(decoded, reencode_rom);
   assert.deepStrictEqual(reencoded, buffer,
     'Roundtrip decode/encode failed'
   );
 }
 
-function verifyRoundtripEncode (type, { uints, data, context }, reset) {
+function verifyRoundtripEncode (codec, { uints, data, context }, reset) {
   const rom = getRom(new Uint8Array(context || uints.length));
-  type.encode(data, rom);
+  codec.encode(data, rom);
   reset();
   rom.offset(0);
-  const decoded = type.decode(rom);
+  const decoded = codec.decode(rom);
   assert.deepStrictEqual(decoded, data,
     'Roundtrip DataToBinary symmetry failed'
   );
 }
 
-function verifyFormat (type, { data, readable }) {
-  assert.deepStrictEqual(type.format(data), readable,
+function verifyFormat (codec, { data, readable }) {
+  assert.deepStrictEqual(codec.format(data), readable,
     'Format accuracy failed'
   );
 }
 
-function verifyParse (type, { data, readable }) {
-  assert.deepStrictEqual(type.parse(readable), data,
+function verifyParse (codec, { data, readable }) {
+  assert.deepStrictEqual(codec.parse(readable), data,
     'Parse accuracy failed'
   );
 }
 
-function verifyRoundtripFormat (type, { data }, reset) {
-  const formatted = type.format(data);
+function verifyRoundtripFormat (codec, { data }, reset) {
+  const formatted = codec.format(data);
   reset();
-  const parsed = type.parse(formatted);
+  const parsed = codec.parse(formatted);
   assert.deepStrictEqual(parsed, data,
     'Roundtrip format/parse symmetry failed'
   );
 }
 
-function verifyRoundtripParse (type, { readable }, reset) {
-  const parsed = type.parse(readable);
+function verifyRoundtripParse (codec, { readable }, reset) {
+  const parsed = codec.parse(readable);
   reset();
-  const formatted = type.format(parsed);
+  const formatted = codec.format(parsed);
   assert.deepStrictEqual(formatted, readable,
     'Roundtrip parse/format symmetry failed'
   );
 }
 
-function assertError (type, invalidData) {
+function assertError (codec, invalidData) {
   assert.throws(() => {
-    type.encode(invalidData, getRom(new Uint8Array([0])));
+    codec.encode(invalidData, getRom(new Uint8Array([0])));
   }, 'Expected error was not thrown');
 }
 
 export {
-  TypeTester,
+  CodecTester,
   verifyDecode,
   verifyEncode,
   verifyFormat,

@@ -1,9 +1,9 @@
 import { describe, it } from '#test';
-import { TypeTester } from '#tests/helpers/codec-test.js';
+import { CodecTester } from '#tests/helpers/codec-test.js';
 import { TextStr, TextScript } from '#root/codecs/text.js';
 
 describe('Text', () => {
-  const tester = new TypeTester();
+  const tester = new CodecTester();
   const api = tester.api;
 
   describe('TextStr', () => {
@@ -18,7 +18,7 @@ describe('Text', () => {
         size: 'byte'
       });
 
-      tester.assertType(text, {
+      tester.assertCodec(text, {
         uints: [0x41, 0x41, 0x00, 0x00, 0x00],
         data: 'AA'
       });
@@ -37,7 +37,7 @@ describe('Text', () => {
         size: 'byte'
       });
 
-      tester.assertType(text, {
+      tester.assertCodec(text, {
         uints: [0x01, 0xFF],
         data: 'AB'
       });
@@ -69,7 +69,7 @@ describe('Text', () => {
         size: 'byte'
       });
   
-      tester.assertType(text_script, {
+      tester.assertCodec(text_script, {
         uints: [0x41, 0x01, 0x05, 0x42, 0xFF],
         data: [
           { name: '__text__', value: 'A' },

@@ -2,7 +2,7 @@
 
 ## 1. Motivation & Goals
 
-The primary goal of this migration is to overhaul the Romance codec definition system, shifting from an ES class-based inheritance model (`class Foo extends TypeNode`) to an ergonomic, decoupled factory and descriptor pattern (`CodecKit`). 
+The primary goal of this migration is to overhaul the Romance codec definition system, shifting from an ES class-based inheritance model (`class Foo extends CodecNode`) to an ergonomic, decoupled factory and descriptor pattern (`CodecKit`). 
 
 Key objectives and architectural drivers include:
 *   **Developer Experience (DevEx) & Boilerplate Reduction:** Eliminate the ceremony of class definitions, `constructor` boilerplate, and manual `satisfiesRomance` assertions.
@@ -17,7 +17,7 @@ Key objectives and architectural drivers include:
 ### CodecKit & Registry Scoping (`CodecKit`)
 The `CodecKit` class replaces the earlier `CodecContext` concept. It acts as a namespacing container and helper utility for defining codecs while scoping the compilation API (`CompileApi<Config['registry']>`).
 *   **`CodecKit.simple()`**: Used for non-generic or standard codecs with fixed argument shapes. Automatically registers the codec and narrows the configuration context.
-*   **`CodecKit.composite()`**: Used for generic codecs (e.g., `List`, `Struct`) where child type nodes and type parameters must propagate.
+*   **`CodecKit.composite()`**: Used for generic codecs (e.g., `List`, `Struct`) where child codec nodes and type parameters must propagate.
 *   **`CodecKit.from<{ ... }>()`**: Allows sub-registries or dependent codec kits to declare precise registry dependencies for nested compilation.
 *   **`CodecKit.Complete`**: Pre-configured kit for the master registry.
 *   **`.run()` Builder Pattern**: Allows binding dependent sub-registries and referencing `Kit.Api` in complex composite codecs:
@@ -40,7 +40,7 @@ The `CodecKit` class replaces the earlier `CodecContext` concept. It acts as a n
 Codecs are no longer instantiated via `new Type()`. Instead, they are defined as descriptor objects containing:
 1.  **Metadata**: `alias` and `kind` (`'number' | 'boolean' | 'string' | 'array' | 'object' | 'void' | 'unknown' | 'passthrough'`).
 2.  **Validation & Normalization**: `isValidArgs` (type guard for input arguments) and `normalizeArgs` (shorthand-to-canonical normalization).
-3.  **`construct(args, api)`**: A factory function that closes over dependencies and returns a stable `RomanceTypeInstance` object implementing:
+3.  **`construct(args, api)`**: A factory function that closes over dependencies and returns a stable `CodecInstance` object implementing:
     *   `decode(rom, api)`
     *   `encode(data, rom, api)`
     *   `format(data, api)`
@@ -51,11 +51,11 @@ Rather than complex recursive class constructors, type propagation is driven by 
 *   **`CodecRules`**: Maps rule keys (e.g., `'item'`, `'list'`) to tuple types `[Data, Formatted]`.
 *   **`RuleTuple` & `CodecNode`**: `api.item()` inspects the codec and its arguments against `CodecRules` to automatically derive the correct `<Data>` and `<Formatted>` types for the resulting node.
 
-### Master Type Registry & Module Augmentation
+### Master Codec Registry & Module Augmentation
 To prevent circular compilation dependencies, and to enable custom codec authoring by users, codecs register themselves into the global TypeScript environment via module augmentation rather than importing all codec classes into a central registry file:
 ```typescript
-declare module '../type-registry.js' {
-  interface MasterTypeRegistry {
+declare module '../codec-registry.js' {
+  interface MasterCodecRegistry {
     myCodec: typeof MyCodec;
   }
 }
@@ -69,10 +69,10 @@ declare module '../type-registry.js' {
 *   **Rationale:** ES classes mixed object-oriented boilerplate with execution logic. Classes required significantly more manual type annotations, and were semantically inappropriate for the Codec system overall. By shifting to pure descriptor objects and a single `construct()` factory function returning an execution instance, we separate metadata/validation from execution, reduce memory overhead, and simplify type inference.
 
 ### 2. Adoption of `CodecRules` over Manual Constructor Generics
-*   **Rationale:** In the class-based system, complex generic codecs required verbose constructor signatures and manual type casting (`as unknown as TypeNode<...>` ). `CodecRules` externalizes type mapping into a declarative type lookup dictionary (`CodecRules`), allowing `api.item()` to automatically infer child-to-parent type propagation cleanly at compile time.
+*   **Rationale:** In the class-based system, complex generic codecs required verbose constructor signatures and manual type casting (`as unknown as CodecNode<...>` ). `CodecRules` externalizes type mapping into a declarative type lookup dictionary (`CodecRules`), allowing `api.item()` to automatically infer child-to-parent type propagation cleanly at compile time.
 
 ### 3. TypeScript Module Augmentation for Registries
-*   **Rationale:** Centralized registry imports caused circular dependency cycles between type definitions and codec implementations. Module augmentation (`declare module`) allows each codec module to contribute its type definition to `MasterTypeRegistry` independently, decoupling compilation units.
+*   **Rationale:** Centralized registry imports caused circular dependency cycles between codec definitions and codec implementations. Module augmentation (`declare module`) allows each codec module to contribute its type definition to `MasterCodecRegistry` independently, decoupling compilation units.
 
 ---
 

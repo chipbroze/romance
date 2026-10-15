@@ -1,5 +1,5 @@
 import { describe, it } from '#test';
-import { TypeTester } from '#tests/helpers/codec-test.js';
+import { CodecTester } from '#tests/helpers/codec-test.js';
 import {
   List,
   Struct,
@@ -11,7 +11,7 @@ import {
 } from '#root/codecs/collections.js';
 
 describe('Collections', () => {
-  const tester = new TypeTester();
+  const tester = new CodecTester();
   const api = tester.api;
 
   describe('List', () => {
@@ -20,7 +20,7 @@ describe('Collections', () => {
         item: api.item('uint', { size: 'byte' }),
         mode: { key: 'length', arg: 2 }
       });
-      tester.assertType(list, {
+      tester.assertCodec(list, {
         uints: [0x01, 0x02],
         data: [0x01, 0x02]
       });
@@ -32,7 +32,7 @@ describe('Collections', () => {
         mode: { key: 'eol', arg: 0xFF }
       });
       // Decodes until it sees 0xFF, which it consumes
-      tester.assertType(list, {
+      tester.assertCodec(list, {
         uints: [0x01, 0x02, 0xFF],
         data: [0x01, 0x02]
       });
@@ -44,7 +44,7 @@ describe('Collections', () => {
         item: api.item('uint', { size }),
         mode: { key: 'until', arg: rom => rom.read(size) === 0xFF }
       });
-      tester.assertType(list, {
+      tester.assertCodec(list, {
         uints: [0x01, 0x02],
         data: [0x01, 0x02],
         context: Array(2).concat(0xFF)
@@ -60,7 +60,7 @@ describe('Collections', () => {
           { name: 'b', item: api.item('uint', { size: 'word' }) }
         ]
       });
-      tester.assertType(struct, {
+      tester.assertCodec(struct, {
         uints: [0x01, 0x34, 0x12],
         data: { a: 0x01, b: 0x1234 }
       });
@@ -81,7 +81,7 @@ describe('Collections', () => {
         }]
       });
 
-      tester.assertType(bitfield, {
+      tester.assertCodec(bitfield, {
         uints: [0xA1],
         data: { a: 0x01, b: 0x0A }
       });
@@ -95,12 +95,12 @@ describe('Collections', () => {
         flags: ['a', 'b']
       });
 
-      tester.assertType(bitmask, {
+      tester.assertCodec(bitmask, {
         uints: [0x03],
         data: ['a', 'b']
       });
 
-      tester.assertType(bitmask, {
+      tester.assertCodec(bitmask, {
         uints: [0x02],
         data: ['b']
       });
@@ -115,7 +115,7 @@ describe('Collections', () => {
         }
       });
 
-      tester.assertType(bitmask, {
+      tester.assertCodec(bitmask, {
         uints: [0xFF],
         data: 'none'
       });
@@ -130,7 +130,7 @@ describe('Collections', () => {
         bitsize: 4
       });
 
-      tester.assertType(bitlist, {
+      tester.assertCodec(bitlist, {
         uints: [0x21],
         data: [0x01, 0x02]
       });
@@ -144,7 +144,7 @@ describe('Collections', () => {
         pad: 0x05
       });
 
-      tester.assertType(bitlist, {
+      tester.assertCodec(bitlist, {
         uints: [0x51],
         data: [0x01]
       });
@@ -165,7 +165,7 @@ describe('Collections', () => {
         ]
       });
 
-      tester.assertType(melted, {
+      tester.assertCodec(melted, {
         uints: [0x01, 0x02],
         data: [{ a: 0x01, b: 0x02 }]
       });
@@ -182,7 +182,7 @@ describe('Collections', () => {
         size: 'word'
       });
 
-      tester.assertType(segment, {
+      tester.assertCodec(segment, {
         uints: [0x04, 0x00, 0x05, 0x00, 0x42],
         data: [[0x42]]
       });

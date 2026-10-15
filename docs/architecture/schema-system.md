@@ -8,7 +8,7 @@ A schema is a declarative description of a binary format and its editable repres
 
 Schemas do not perform work themselves.
 
-Instead, schemas are compiled into executable type graphs by the Engine.
+Instead, schemas are compiled into executable codec graphs by the Engine.
 
 ---
 
@@ -16,14 +16,14 @@ Instead, schemas are compiled into executable type graphs by the Engine.
 
 Schemas are authored as JavaScript modules.
 
-A schema typically exports a root type definition.
+A schema typically exports a root codec definition.
 
 Example:
 
 ```js
-export const commands = $type('range', {
+export const commands = $codec('range', {
   org: 0xC2278A,
-  item: $type('list', {
+  item: $codec('list', {
     length: 32,
     item: command
   })
@@ -36,12 +36,12 @@ The exported object is a schema abstract syntax tree (AST).
 
 ## Compilation
 
-The Engine compiles schema ASTs into executable type graphs.
+The Engine compiles schema ASTs into executable codec graphs.
 
 Compilation resolves:
 
-* built-in types
-* custom types
+* built-in codecs
+* custom codecs
 * references
 * hooks
 * profiles

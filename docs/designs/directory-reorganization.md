@@ -19,7 +19,7 @@ The current directory structure under `src/` places core engine modules, file ma
 ```text
 src/
 ├── index.ts                 # Primary library entrypoint (Romance API & public types)
-├── codec-kit.ts             # Secondary entrypoint for custom codec authoring (CodecKit, TypeNode, etc.)
+├── codec-kit.ts             # Secondary entrypoint for custom codec authoring (CodecKit, CodecNode, etc.)
 ├── cli.ts                   # CLI entrypoint and command line interface logic
 ├── core/                    # Core framework execution and project orchestration
 │   ├── engine.ts            # Execution engine (decode, encode, parse, format, validation)
@@ -29,9 +29,9 @@ src/
 │   ├── project.ts           # Project resource repository & engine factory
 |   ├── romance.ts           # Romance orchestrator / high-level API implementation
 │   ├── rom.ts               # ROM binary data handling and size descriptors
-│   ├── schema-graph.ts      # Declarative schema compilation into type graphs
-│   ├── type-registry.ts     # Master type registry and CodecKit definitions. TODO: Rename to codec-registry.ts
-│   └── types.ts             # Core type definitions and structural interfaces
+│   ├── schema-graph.ts      # Declarative schema compilation into codec graphs
+│   ├── codec-registry.ts    # Master codec registry and CodecKit definitions.
+│   └── codecs.ts            # Core codec definitions and structural interfaces
 ├── codecs/                  # Standard binary codec implementations
 │   ├── collections.ts       # List, Struct, SegmentList, Bitfield, etc.
 │   ├── ops.ts               # Fork, Modifier, View, Custom, Script, Resolver
@@ -56,7 +56,7 @@ src/
 
 ### A. Entrypoints
 *   **`src/index.ts` (Primary Entrypoint):** Serves as the main programmatic library interface for external consumers embedding Romance. Exports `Romance` and essential project/engine configuration types.
-*   **`src/codec-kit.ts` (Secondary Entrypoint):** Dedicated entrypoint for custom codec authors. Exports `CodecKit`, `TypeNode`, `RomanceTypeInstance`, and validation primitives without exposing internal engine execution guts.
+*   **`src/codec-kit.ts` (Secondary Entrypoint):** Dedicated entrypoint for custom codec authors. Exports `CodecKit`, `CodecNode`, `CodecInstance`, and validation primitives without exposing internal engine execution guts.
 *   **`src/cli.ts`:** Command-line interface wrapper handling argument parsing, command dispatching, help generation, and CLI feedback.
 
 ### B. Core (`src/core/`)
@@ -100,8 +100,8 @@ export { Romance } from './romance.js';
 
 ### Codec Authoring Export (`src/codec-kit.ts`)
 ```typescript
-export { CodecKit, TypeNode } from './core/type-registry.js';
-export type { RomanceTypeInstance, datasize } from './core/type-registry.js';
+export { CodecKit, CodecNode } from './core/codec-registry.js';
+export type { CodecInstance, datasize } from './core/codec-registry.js';
 ```
 
 ### Encapsulation Rules

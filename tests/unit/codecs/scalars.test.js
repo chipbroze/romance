@@ -1,6 +1,6 @@
 import assert from 'node:assert';
 import { describe, it } from '#test';
-import { TypeTester } from '#tests/helpers/codec-test.js';
+import { CodecTester } from '#tests/helpers/codec-test.js';
 import {
   Empty,
   Static,
@@ -12,12 +12,12 @@ import {
   Tile
 } from '#root/codecs/scalars.js';
 
-const tester = new TypeTester();
+const tester = new CodecTester();
 
 describe('Scalars', () => {
   describe('Empty', () => {
     it('handles empty data', () => {
-      tester.assertType(Empty.construct({}), {
+      tester.assertCodec(Empty.construct({}), {
         uints: [],
         data: undefined
       });
@@ -26,7 +26,7 @@ describe('Scalars', () => {
 
   describe('Static', () => {
     it('handles static value', () => {
-      tester.assertType(Static.construct({ value: 'foo' }), {
+      tester.assertCodec(Static.construct({ value: 'foo' }), {
         uints: [],
         data: 'foo'
       });
@@ -35,28 +35,28 @@ describe('Scalars', () => {
 
   describe('Uint', () => {
     it('handles byte uints', () => {
-      tester.assertType(Uint.construct({ size: 'byte' }), {
+      tester.assertCodec(Uint.construct({ size: 'byte' }), {
         uints: [0x42],
         data: 0x42
       });
     });
 
     it('handles word uints', () => {
-      tester.assertType(Uint.construct({ size: 'word' }), {
+      tester.assertCodec(Uint.construct({ size: 'word' }), {
         uints: [0x34, 0x12],
         data: 0x1234
       });
     });
 
     it('handles sword uints', () => {
-      tester.assertType(Uint.construct({ size: 'sword' }), {
+      tester.assertCodec(Uint.construct({ size: 'sword' }), {
         uints: [0x78, 0x56, 0x34],
         data: 0x345678
       });
     });
 
     it('handles double uints', () => {
-      tester.assertType(Uint.construct({ size: 'double' }), {
+      tester.assertCodec(Uint.construct({ size: 'double' }), {
         uints: [0x00, 0x00, 0x00, 0x01],
         data: 0x01000000
       });
@@ -65,7 +65,7 @@ describe('Scalars', () => {
 
   describe('HexInt', () => {
     it('handles hex ints', () => {
-      tester.assertType(HexInt.construct({ size: 'byte' }, tester.api), {
+      tester.assertCodec(HexInt.construct({ size: 'byte' }, tester.api), {
         uints: [0x42],
         data: 0x42,
         readable: '0x42'
@@ -75,21 +75,21 @@ describe('Scalars', () => {
 
   describe('Fixed', () => {
     it('handles fixed value', () => {
-      tester.assertType(Fixed.construct({ value: 0x42, size: 'byte' }, tester.api), {
+      tester.assertCodec(Fixed.construct({ value: 0x42, size: 'byte' }, tester.api), {
         uints: [0x42],
         data: 0x42
       });
     });
 
     it('handles word fixed value', () => {
-      tester.assertType(Fixed.construct({ value: 0x1234, size: 'word' }, tester.api), {
+      tester.assertCodec(Fixed.construct({ value: 0x1234, size: 'word' }, tester.api), {
         uints: [0x34, 0x12],
         data: 0x1234
       });
     });
 
     it('omits value from format via hide: true', () => {
-      tester.assertType(Fixed.construct({ value: 0x42, size: 'byte', hide: true }, tester.api), {
+      tester.assertCodec(Fixed.construct({ value: 0x42, size: 'byte', hide: true }, tester.api), {
         uints: [0x42],
         data: 0x42,
         readable: null
@@ -103,7 +103,7 @@ describe('Scalars', () => {
 
   describe('Bool', () => {
     it('handles boolean values', () => {
-      tester.assertType(Bool.construct({}, tester.api), {
+      tester.assertCodec(Bool.construct({}, tester.api), {
         uints: [0x01],
         data: true
       });
@@ -112,14 +112,14 @@ describe('Scalars', () => {
 
   describe('Enum', () => {
     it('handles byte enum', () => {
-      tester.assertType(Enum.construct({ values: { 0x00: 'off', 0x01: 'on' }, size: 'byte' }, tester.api), {
+      tester.assertCodec(Enum.construct({ values: { 0x00: 'off', 0x01: 'on' }, size: 'byte' }, tester.api), {
         uints: [0x01],
         data: 'on'
       });
     });
 
     it('handles word enum', () => {
-      tester.assertType(Enum.construct({ values: { 0x100: 'large' }, size: 'word' }, tester.api), {
+      tester.assertCodec(Enum.construct({ values: { 0x100: 'large' }, size: 'word' }, tester.api), {
         uints: [0x00, 0x01],
         data: 'large'
       });
@@ -133,7 +133,7 @@ describe('Scalars', () => {
       uints[0] = 1;
       data[7] = 1;
 
-      tester.assertType(Tile.construct({ bpp: 2 }), {
+      tester.assertCodec(Tile.construct({ bpp: 2 }), {
         uints,
         data,
         readable: [
@@ -155,7 +155,7 @@ describe('Scalars', () => {
       uints[0] = 1; // 00000001
       data[7] = 1;
 
-      tester.assertType(Tile.construct({ bpp: 1 }), {
+      tester.assertCodec(Tile.construct({ bpp: 1 }), {
         uints,
         data,
         readable: [
@@ -180,7 +180,7 @@ describe('Scalars', () => {
       // 4bpp uses 4 bitplanes, 32 bytes total.
       // bit 0 of first byte is bitplane 0, row 0, col 7.
 
-      tester.assertType(Tile.construct({ bpp: 4 }), {
+      tester.assertCodec(Tile.construct({ bpp: 4 }), {
         uints,
         data,
         readable: [

@@ -1,5 +1,5 @@
 import { describe, it } from '#test';
-import { TypeTester } from '#tests/helpers/codec-test.js';
+import { CodecTester } from '#tests/helpers/codec-test.js';
 import {
   Range,
   Modifier,
@@ -31,7 +31,7 @@ describe('Ops', () => {
       return ref === 'test_ref' && fn(test_ref);
     }
   };
-  const tester = new TypeTester(session_api);
+  const tester = new CodecTester(session_api);
   const api = tester.api;
   const uint8 = api.item('uint', { size: 'byte' });
 
@@ -45,7 +45,7 @@ describe('Ops', () => {
         ]
       });
 
-      tester.assertType(fork, {
+      tester.assertCodec(fork, {
         uints: [0x01, 0x05], // Control 0x01 (A), Value 0x05
         data: { name: 'A', value: 0x05 },
         readable: { 'A': 0x05 }
@@ -61,7 +61,7 @@ describe('Ops', () => {
         parser: (data) => parseInt(data.split(':')[1])
       });
 
-      tester.assertType(dec, {
+      tester.assertCodec(dec, {
         uints: [0x05],
         data: 5,
         readable: 'val:5'
@@ -76,7 +76,7 @@ describe('Ops', () => {
         parser (data) { return parseInt(data.split(this.delimit)[1]); }
       });
 
-      tester.assertType(dec, {
+      tester.assertCodec(dec, {
         uints: [0x05],
         data: 5,
         readable: 'val:5'
@@ -93,7 +93,7 @@ describe('Ops', () => {
         encoder (data) { return data ^ this.invert; }
       });
 
-      tester.assertType(dec, {
+      tester.assertCodec(dec, {
         uints: [0x00], // 0xFF ^ 0xFF = 0x00
         data: 0xFF
       });
@@ -107,7 +107,7 @@ describe('Ops', () => {
         item: uint8
       });
 
-      tester.assertType(range, {
+      tester.assertCodec(range, {
         uints: [0x00, 0x00, 0x05], // Skip 2 bytes, data at 0x02
         data: 0x05
       });
@@ -125,7 +125,7 @@ describe('Ops', () => {
         })
       });
 
-      tester.assertType(custom, {
+      tester.assertCodec(custom, {
         uints: [0xAA],
         data: 0xAA,
         readable: 'aa'
@@ -144,7 +144,7 @@ describe('Ops', () => {
         }
       });
 
-      tester.assertType(resolver, {
+      tester.assertCodec(resolver, {
         uints: [0x05],
         data: 0x05
       });
@@ -159,7 +159,7 @@ describe('Ops', () => {
         path: ['item', 'value']
       });
 
-      tester.assertType(entity, {
+      tester.assertCodec(entity, {
         uints: [0x00],
         data: 0x00,
         readable: '$05'

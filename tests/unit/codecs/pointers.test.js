@@ -1,9 +1,9 @@
 import { describe, it } from '#test';
-import { TypeTester } from '#tests/helpers/codec-test.js';
+import { CodecTester } from '#tests/helpers/codec-test.js';
 import { Pointer, PointerIndex, PointerTable } from '#root/codecs/pointers.js';
 
 describe('Pointers', () => {
-  const tester = new TypeTester();
+  const tester = new CodecTester();
   const api = tester.api;
 
   describe('Pointer', () => {
@@ -14,7 +14,7 @@ describe('Pointers', () => {
         base: 0x00
       });
 
-      tester.assertType(ptr, {
+      tester.assertCodec(ptr, {
         uints: [0x02, 0x00, 0x05],
         data: 0x05
       });
@@ -32,7 +32,7 @@ describe('Pointers', () => {
         length: 1
       });
 
-      tester.assertType(ptr_idx, {
+      tester.assertCodec(ptr_idx, {
         uints: [0x00, 0x03, 0x00, 0x05],
         data: 0x05
       });
@@ -49,7 +49,7 @@ describe('Pointers', () => {
         base: 0x00
       });
 
-      tester.assertType(ptr_table, {
+      tester.assertCodec(ptr_table, {
         uints: [0x04, 0x00, 0x05, 0x00, 0x05, 0x06],
         data: [0x05, 0x06]
       });
