@@ -27,7 +27,7 @@ function createMockGraph (id, methods = {}) {
     }
   }
   const registry = new CodecRegistry([MockCodec]);
-  return new SchemaGraph(id, registry).compile({ $type: id, $name: id });
+  return new SchemaGraph(id, registry).compile({ $codec: id, $name: id });
 }
 
 function randomUint8 () {
@@ -39,7 +39,7 @@ describe('Engine', () => {
 
   function getUintSchema (id) {
     return new Map([
-      [id, { item: { $type: 'uint', size: 'byte' } }]
+      [id, { item: { $codec: 'uint', size: 'byte' } }]
     ]);
   }
 

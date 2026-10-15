@@ -37,7 +37,7 @@ describe('SchemaGraph', () => {
 
     it('successfully executes after compilation', () => {
       const graph = new SchemaGraph('test', mock_codex).compile({
-        $type: 'method_name',
+        $codec: 'method_name',
         $name: 'testNode'
       });
 
@@ -67,7 +67,7 @@ describe('SchemaGraph', () => {
 
     it('guarantees unbind on execution failure', () => {
       const graph = new SchemaGraph('test', mock_codex).compile({
-        $type: 'method_name',
+        $codec: 'method_name',
         $name: 'node'
       });
       

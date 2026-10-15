@@ -113,7 +113,7 @@ const tests = {
   resolver: api.item('resolver', {
     self: {
       item: {
-        $type: 'uint',
+        $codec: 'uint',
         size: 'word'
       }
     } as Dict,

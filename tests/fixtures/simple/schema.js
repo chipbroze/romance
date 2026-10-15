@@ -1,5 +1,5 @@
 export const simple = {
-  $type: 'range',
+  $codec: 'range',
   org: 0,
-  item: { $type: 'uint', size: 'byte' }
+  item: { $codec: 'uint', size: 'byte' }
 };

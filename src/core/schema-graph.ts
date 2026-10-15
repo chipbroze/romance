@@ -99,7 +99,7 @@ class GraphRuntime {
 
 interface NodeSpec {
   [key: string]: unknown;
-  $type: string;
+  $codec: string;
   $name?: string;
 }
 interface NodeMeta {
@@ -142,8 +142,8 @@ class SchemaGraph {
     return Boolean(
       value &&
       typeof value === 'object' &&
-      '$type' in value &&
-      typeof value.$type === 'string'
+      '$codec' in value &&
+      typeof value.$codec === 'string'
     );
   }
 
@@ -220,7 +220,7 @@ class SchemaGraph {
 
   // Runtime schema normalization, limited type safety
   #compileNode (spec: NodeSpec): SchemaNode {
-    const { $type: type, $name: name = '', ...args } = spec;
+    const { $codec: type, $name: name = '', ...args } = spec;
     const Codec = this.#getCodec(type);
     const normalized_args = Codec.normalizeArgs?.(args) ?? args;
     return this.#node(Codec, normalized_args, name);

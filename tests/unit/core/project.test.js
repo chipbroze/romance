@@ -10,7 +10,7 @@ describe('Project Schema Compilation', () => {
       types: [],
       hooks: new Map(),
       schemas: new Map([
-        ['root', { item: { $type: 'uint', size: 'byte' } }]
+        ['root', { item: { $codec: 'uint', size: 'byte' } }]
       ])
     });
     
