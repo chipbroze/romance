@@ -1,21 +1,30 @@
+
+import * as v from './valibot.js';
+
 import {
   Lookup,
   type Dict
 } from './helpers.js';
 
-import * as v from './valibot.js';
-import { type Rom, type datasize } from '../core/rom.js';
-import { list_mode_schema } from './collections.js';
+import {
+  type Rom,
+  type datasize,
+  CodecKit
+} from '../codec-kit.js';
 
 import {
-  CodecKit
-} from '../core/codec-registry.js';
+  type ListModeSpec,
+  List,
+  list_mode_schema
+} from './collections.js';
 
-import { List } from './collections.js';
-import type { ListModeSpec } from './collections.js';
 import type { Enum, Uint } from './scalars.js';
-import type { Script, ForkOptions, ForkDataFor } from './ops.js';
-import { Fork } from './ops.js';
+import {
+  type Script,
+  type ForkOptions,
+  type ForkDataFor,
+  Fork
+} from './ops.js';
 
 declare module '../core/codec-registry.js' {
   interface MasterCodecRegistry {

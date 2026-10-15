@@ -1,13 +1,15 @@
-import { type Dict, asNode, passthrough } from './helpers.js';
 import * as v from './valibot.js';
-import type { datasize } from '../core/rom.js';
+import { type Dict, asNode, passthrough } from './helpers.js';
+
+import {
+  CodecKit,
+  type datasize,
+  type CodecNode,
+} from '../codec-kit.js';
+
 import type { Uint, HexInt } from './scalars.js';
 import type { List } from './collections.js';
 import type { Range } from './ops.js';
-import {
-  CodecKit,
-  type CodecNode,
-} from '../core/codec-registry.js';
 
 declare module '../core/codec-registry.js' {
   interface MasterCodecRegistry {

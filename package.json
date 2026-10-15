@@ -12,7 +12,8 @@
   "main": "dist/index.js",
   "exports": {
     ".": "./dist/index.js",
-    "./codec-kit": "./dist/codec-kit.js"
+    "./codec-kit": "./dist/codec-kit.js",
+    "./codecs": "./dist/codecs/index.js"
   },
   "imports": {
     "#root/*": "./dist/*",

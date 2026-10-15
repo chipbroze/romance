@@ -1,3 +1,5 @@
+import * as v from './valibot.js';
+
 import {
   isObj,
   isStr,
@@ -10,23 +12,18 @@ import {
   type NumDict
 } from './helpers.js';
 
-import * as v from './valibot.js';
-import { type Rom } from '../core/rom.js';
+import {
+  CodecKit,
+  type datasize,
+  type CodecNode,
+  type Rom
+} from '../codec-kit.js';
 
 import {
   list_mode_schema,
   type List,
   type ListModeSpec
 } from './collections.js';
-
-import {
-  CodecKit,
-  type CodecNode,
-} from '../core/codec-registry.js';
-
-import type {
-  datasize
-} from '../core/codec-registry.js';
 
 import type {
   Uint

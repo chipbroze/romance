@@ -1,9 +1,12 @@
 export {
   CodecKit,
-  CodecNode
+  CodecNode,
+  CodecInstance,
+  CompileApi,
+  RuntimeApi
 } from './core/codec-registry.js';
 
 export type {
-  CodecInstance,
+  Rom,
   datasize
-} from './core/codec-registry.js';
+} from './core/rom.js';

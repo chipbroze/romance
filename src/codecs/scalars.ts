@@ -1,9 +1,10 @@
 import * as v from './valibot.js';
 import { Lookup, hex, type Dict, type NumDict } from './helpers.js';
-import { type datasize } from '../core/rom.js';
+
 import {
+  type datasize,
   CodecKit,
-} from '../core/codec-registry.js';
+} from '../codec-kit.js';
 
 declare module '../core/codec-registry.js' {
   interface MasterCodecRegistry {

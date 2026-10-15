@@ -1,14 +1,17 @@
-import { Lookup, type Dict } from './helpers.js';
 import * as v from './valibot.js';
+import { Lookup, type Dict } from './helpers.js';
 import { deepEqualTry } from '../utils/assert.js';
-import { Rom, type datasize } from '../core/rom.js';
-import type { Uint, Bool } from './scalars.js';
-import type { Custom, Range } from './ops.js';
+import { Rom } from '../core/rom.js';
+
 import {
   CodecKit,
   type CodecNode,
   type RuntimeApi,
-} from '../core/codec-registry.js';
+  type datasize
+} from '../codec-kit.js';
+
+import type { Uint, Bool } from './scalars.js';
+import type { Custom, Range } from './ops.js';
 
 declare module '../core/codec-registry.js' {
   interface MasterCodecRegistry {
