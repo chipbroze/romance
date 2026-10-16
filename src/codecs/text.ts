@@ -8,7 +8,7 @@ import {
 
 import {
   type Rom,
-  type datasize,
+  type Datasize,
   CodecKit
 } from '../codec-kit.js';
 
@@ -122,7 +122,7 @@ type TextStrArgs <
   Table extends NumDict<string> = NumDict<string>
 > = {
   table: Table;
-  size: datasize;
+  size: Datasize;
   pad?: keyof Table;
   mode: ListModeSpec<string>;
 };
@@ -212,7 +212,7 @@ type TextScriptArgs <
   Ops extends ForkOptions<number> = ForkOptions<number>
 > = {
   table: Table,
-  size: datasize;
+  size: Datasize;
   ops: Ops;
   mode: ListModeSpec<ForkDataFor<number, Ops>>
 };

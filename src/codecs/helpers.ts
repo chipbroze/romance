@@ -2,10 +2,10 @@
 
 import { Rom } from '../core/rom.js';
 import type {
-  datasize,
+  Datasize,
   CodecNode,
   CodecInstance
-} from '../core/codec-registry.js';
+} from '../codec-kit.js';
 
 type Dict <V = unknown> = Record<string, V>;
 type NumDict <V = unknown> = Record<number, V>;
@@ -14,11 +14,11 @@ class Hex {
   #value: number | null;
   #len: number;
 
-  constructor (uint: number | null, size: datasize) {
+  constructor (uint: number | null, size: Datasize) {
     this.#value = uint;
     this.#len = uint ? this.#getLength(size) : 0;
   }
-  #getLength (size: datasize) {
+  #getLength (size: Datasize) {
     return Rom.sizeBytes(size) * 2;
   }
   toJSON () {
@@ -34,7 +34,7 @@ class Hex {
   }
 }
 
-function hex (uint: number | string, size?: datasize) {
+function hex (uint: number | string, size?: Datasize) {
   // Supports parsing hex string and decimal number versions
   const value = (uint === 'null' ? null
     : typeof uint === 'number' ? uint

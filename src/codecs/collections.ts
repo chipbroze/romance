@@ -7,7 +7,7 @@ import {
   CodecKit,
   type CodecNode,
   type RuntimeApi,
-  type datasize
+  type Datasize
 } from '../codec-kit.js';
 
 import type { Uint, Bool } from './scalars.js';
@@ -360,7 +360,7 @@ type SegmentListArgs <Item extends CodecNode = CodecNode> = {
   org: number;
   base: number;
   warn?: number;
-  size?: datasize
+  size?: Datasize
 };
 
 const segment_list_schema = v.object({
@@ -479,13 +479,13 @@ const SegmentList = CodecKit.from<{
 type BitfieldField <N extends string = string> = StructField<N> & {
   readonly mask: number;
   readonly shift?: number | null;
-  readonly size?: datasize | null;
+  readonly size?: Datasize | null;
 };
 type BitfieldTuple = readonly BitfieldField[];
 type BitfieldArgs <
   Fields extends BitfieldTuple = BitfieldTuple
 > = {
-  size?: datasize;
+  size?: Datasize;
   readonly fields: Fields
 };
 
@@ -746,7 +746,7 @@ const SplitList = CodecKit.from<{
 type BitmaskArgs = {
   readonly flags: readonly string[];
   readonly states?: Record<number, string>;
-  readonly size?: datasize;
+  readonly size?: Datasize;
 };
 
 const bitmask_schema = v.object({

@@ -14,5 +14,5 @@ export type {
 
 export type {
   Rom,
-  datasize
+  Datasize
 } from './core/rom.js';

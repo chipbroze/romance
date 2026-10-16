@@ -2,7 +2,7 @@ import * as v from './valibot.js';
 import { Lookup, hex, type Dict, type NumDict } from './helpers.js';
 
 import {
-  type datasize,
+  type Datasize,
   CodecKit,
 } from '../codec-kit.js';
 
@@ -66,11 +66,11 @@ const size_bits: Record<string, number> = {
   double: 32
 };
 function getSizeMax (size: unknown): number {
-  return 2 ** (size_bits[size as datasize] || 0) - 1 || -1;
+  return 2 ** (size_bits[size as Datasize] || 0) - 1 || -1;
 }
 
 type UintArgs = {
-  size: datasize
+  size: Datasize
 };
 
 const uint_schema = v.object({
@@ -115,7 +115,7 @@ const HexInt = UintKit.simple({
 });
 
 type FixedArgs = {
-  size: datasize;
+  size: Datasize;
   value: number;
   hide?: boolean;
 };
@@ -155,7 +155,7 @@ const Fixed = UintKit.simple({
   }
 });
 
-type BoolArgs = { size?: datasize };
+type BoolArgs = { size?: Datasize };
 
 const bool_schema = v.object({
   size: v.optional(v.datasize()),
@@ -196,7 +196,7 @@ const Bool = UintKit.simple({
 });
 
 type EnumArgs = {
-  size?: datasize;
+  size?: Datasize;
   values: NumDict<string>;
 };
 

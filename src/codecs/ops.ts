@@ -14,7 +14,7 @@ import {
 
 import {
   CodecKit,
-  type datasize,
+  type Datasize,
   type CodecNode,
   type Rom
 } from '../codec-kit.js';
@@ -96,7 +96,7 @@ const tests = {
   custom: api.item('custom', {
     args: { size: 'byte' },
     construct: (args, api) => {
-      const $uint = api.item('uint', { size: args.size as datasize });
+      const $uint = api.item('uint', { size: args.size as Datasize });
       return {
         decode: (rom: Rom, _api: RuntimeApi): number => {
           return $uint.decode(rom) * 2;
@@ -722,7 +722,7 @@ const Resolver = CodecKit.Complete.composite({
 });
 
 type EntityArgs = {
-  size: datasize;
+  size: Datasize;
   from: string;
   path: string[];
   inject?: NumDict<string>

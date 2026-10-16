@@ -1,7 +1,7 @@
 /* Rom Reader */
 
 const datasizes = ['byte', 'word', 'sword', 'double'] as const;
-type datasize = typeof datasizes[number];
+type Datasize = typeof datasizes[number];
 type RomRange = readonly [number, number | null];
 type range_error_kind = 'overflow' | 'underflow';
 type range_error_mode = 'read' | 'write';
@@ -249,7 +249,7 @@ class Rom {
     return this.#index;
   }
 
-  read (size: datasize): number {
+  read (size: Datasize): number {
     const i = this.#index;
 
     const advanceBytes = (num: number): void => {
@@ -283,7 +283,7 @@ class Rom {
     }
   }
 
-  write (value: number, size: datasize): number {
+  write (value: number, size: Datasize): number {
     switch (size) {
     case 'double':
       this.#assertBounds(4, 'write');
@@ -313,13 +313,13 @@ class Rom {
     return this.#index;
   }
   
-  readAt (offset: number, size: datasize): number {
+  readAt (offset: number, size: Datasize): number {
     return this.jsr(offset, () => {
       return this.read(size);
     });
   }
 
-  writeAt (offset: number, value: number, size: datasize): number {
+  writeAt (offset: number, value: number, size: Datasize): number {
     return this.jsr(offset, () => {
       return this.write(value, size);
     });
@@ -407,18 +407,14 @@ class Rom {
     return rom_mappers[format];
   }
 
-  static isValidSize (size: unknown): size is datasize {
-    return datasizes.includes(size as datasize);
-  }
-
-  static getSize (uint: number): datasize {
+  static getSize (uint: number): Datasize {
     return uint > 0xFFFFFF ? 'double'
       : uint > 0xFFFF ? 'sword'
       : uint > 0xFF ? 'word'
       : 'byte';
   }
 
-  static sizeBytes (size: datasize): 1 | 2 | 3 | 4 {
+  static sizeBytes (size: Datasize): 1 | 2 | 3 | 4 {
     switch (size) {
       case 'byte': return 1;
       case 'word': return 2;
@@ -428,7 +424,7 @@ class Rom {
     }
   }
 
-  static sizeCap (size: datasize) {
+  static sizeCap (size: Datasize) {
     return Math.pow(2, Rom.sizeBytes(size) * 8);
   }
 
@@ -446,6 +442,6 @@ function assertNever (label: string, value: never): never {
 export { Rom };
 
 export type {
-  datasize,
+  Datasize,
   RomFormat,
 };

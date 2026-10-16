@@ -1,6 +1,5 @@
 import {
   Rom,
-  type datasize
 } from './rom.js';
 
 // ###########################################################################
@@ -366,5 +365,4 @@ export type {
   DataOf,
   FormattedOf,
   InputByAlias,
-  datasize
 };

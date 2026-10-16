@@ -3,7 +3,7 @@ import { type Dict, asNode, passthrough } from './helpers.js';
 
 import {
   CodecKit,
-  type datasize,
+  type Datasize,
   type CodecNode,
 } from '../codec-kit.js';
 
@@ -99,7 +99,7 @@ type ListIndexArgs <Item extends CodecNode = CodecNode> = {
   base?: number;
   chunk: number;
   item: Item;
-  size?: datasize;
+  size?: Datasize;
 };
 
 const list_index_schema = v.object({
