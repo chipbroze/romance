@@ -1,6 +1,4 @@
-import {
-  Rom,
-} from './rom.js';
+import type { Rom } from './rom.js';
 
 // ###########################################################################
 // Type Utilities
@@ -62,7 +60,6 @@ type CodecConstraint <Alias, Args> = (
   : Args
 );
 
-// TODO: Can Construct be de-generic-ified now?
 interface CodecRules <Args=Dict> {
   list: (Args extends { item: infer I extends CodecNode }
     ? [I['<Data>'][], I['<Formatted>'][]]
@@ -88,9 +85,6 @@ type TupleNode <T> = (
 );
 type CodecNodeFor <Codec, Args> = (
   TupleNode<RuleTuple<Codec, Args>>
-);
-type AliasNode <Alias extends CodecAlias, Args> = (
-  CodecNodeFor<MasterRegistry[Alias], Args>
 );
 
 type CodecInstance <
@@ -288,7 +282,6 @@ type InputOf <T> = (
 
 type DataOf <Codec, Args = InputOf<Codec>> = RuleTuple<Codec, Args>[0];
 type FormattedOf <Codec, Args = InputOf<Codec>> = RuleTuple<Codec, Args>[1];
-type InputByAlias <Alias extends CodecAlias> = InputOf<MasterRegistry[Alias]>;
 
 abstract class CodecNode <Data = unknown, Formatted = Data> {
   declare readonly '<Data>': Data;
@@ -346,23 +339,19 @@ type AnyRomanceCodec = AnySimpleCodec | AnyCompositeCodec;
 export {
   Codex,
   CodecNode,
-  CodecKit,
-  Rom // TODO: Bundle all necessary types in one easy module
+  CodecKit
 };
 export type {
-  AliasNode,
-  CodecAlias,
-  MasterCodecRegistry,
+  MasterCodecRegistry, //TODO rename
   CodecRules,
-  CodecConstraint,
   CodecConstraints,
+
   RomanceCodec,
   CodecInstance,
-  SessionApi,
-  CompileApi,
-  RuntimeApi,
   InputOf,
   DataOf,
   FormattedOf,
-  InputByAlias,
+  SessionApi,
+  CompileApi,
+  RuntimeApi
 };
