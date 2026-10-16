@@ -90,7 +90,7 @@ type CodecNodeFor <Codec, Args> = (
 type CodecInstance <
   Data = unknown,
   Formatted = Data,
-  CodecRegistry extends object = MasterRegistry
+  CodecRegistry extends object = MasterCodecRegistry
 > = {
   decode: (rom: Rom, api: RuntimeApi<CodecRegistry>) => Data;
   encode: (data: Data, rom: Rom, api: RuntimeApi<CodecRegistry>) => void;
@@ -153,7 +153,7 @@ type CodecConfig = {
   registry: object
 };
 type DefaultConfig = {
-  registry: MasterRegistry
+  registry: MasterCodecRegistry
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -164,7 +164,7 @@ type AnyCompositeCodec = CompositeCodec<any, any, any, any, any>;
 
 // Helper to strip out SubRegistry workaround
 type RuntimeConfig <C extends CodecConfig> = (
-  Omit<C, 'registry'> & { registry: MasterRegistry }
+  Omit<C, 'registry'> & { registry: MasterCodecRegistry }
 );
 
 const registered_codecs = new Map<string, RomanceCodec>();
@@ -217,7 +217,7 @@ class CodecKit <
       Config
     >
   ) {
-    // Ensure full MasterRegistry is used for all codecs
+    // Ensure full MasterCodecRegistry is used for all codecs
     this.register(codec);
     return codec as SimpleCodec<
       Alias,
@@ -267,8 +267,7 @@ class CodecKit <
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface MasterCodecRegistry {}
 
-type MasterRegistry = MasterCodecRegistry;
-type CodecAlias = keyof MasterRegistry;
+type CodecAlias = keyof MasterCodecRegistry;
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type InputOf <T> = (
@@ -312,8 +311,8 @@ class Codex {
     return typeof alias === 'string' && this.#codecs.has(alias);
   }
 
-  get <T extends CodecAlias> (alias: T): MasterRegistry[T] {
-    return this.#codecs.get(alias) as MasterRegistry[T];
+  get <T extends CodecAlias> (alias: T): MasterCodecRegistry[T] {
+    return this.#codecs.get(alias) as MasterCodecRegistry[T];
   }
 }
 
