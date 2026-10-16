@@ -7,9 +7,9 @@ export {
 } from './core/codec-registry.js';
 
 export type {
+  CodecRegistry,
   CodecRules,
   CodecConstraints,
-  MasterCodecRegistry
 } from './core/codec-registry.js';
 
 export type {

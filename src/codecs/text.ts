@@ -27,7 +27,7 @@ import {
 } from './ops.js';
 
 declare module '../codec-kit.js' {
-  interface MasterCodecRegistry {
+  interface CodecRegistry {
     string: typeof TextStr;
     text_script: typeof TextScript;
   }

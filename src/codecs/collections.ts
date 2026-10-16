@@ -14,7 +14,7 @@ import type { Uint, Bool } from './scalars.js';
 import type { Custom, Range } from './ops.js';
 
 declare module '../codec-kit.js' {
-  interface MasterCodecRegistry {
+  interface CodecRegistry {
     list: typeof List;
     struct: typeof Struct;
     segment_list: typeof SegmentList;

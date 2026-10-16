@@ -12,7 +12,7 @@ import type { List } from './collections.js';
 import type { Range } from './ops.js';
 
 declare module '../codec-kit.js' {
-  interface MasterCodecRegistry {
+  interface CodecRegistry {
     dereference: typeof Dereference;
     list_index: typeof ListIndex;
     pointer: typeof Pointer;

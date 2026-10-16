@@ -30,7 +30,7 @@ import type {
 } from './scalars.js';
 
 declare module '../codec-kit.js' {
-  interface MasterCodecRegistry {
+  interface CodecRegistry {
     range: typeof Range;
     modifier: typeof Modifier;
     view: typeof View;
