@@ -26,7 +26,7 @@ import {
   Fork
 } from './ops.js';
 
-declare module '../core/codec-registry.js' {
+declare module '../codec-kit.js' {
   interface MasterCodecRegistry {
     string: typeof TextStr;
     text_script: typeof TextScript;

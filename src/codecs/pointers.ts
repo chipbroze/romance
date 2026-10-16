@@ -11,7 +11,7 @@ import type { Uint, HexInt } from './scalars.js';
 import type { List } from './collections.js';
 import type { Range } from './ops.js';
 
-declare module '../core/codec-registry.js' {
+declare module '../codec-kit.js' {
   interface MasterCodecRegistry {
     dereference: typeof Dereference;
     list_index: typeof ListIndex;

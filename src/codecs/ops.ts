@@ -29,7 +29,7 @@ import type {
   Uint
 } from './scalars.js';
 
-declare module '../core/codec-registry.js' {
+declare module '../codec-kit.js' {
   interface MasterCodecRegistry {
     range: typeof Range;
     modifier: typeof Modifier;

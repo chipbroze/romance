@@ -6,7 +6,7 @@ import {
   CodecKit,
 } from '../codec-kit.js';
 
-declare module '../core/codec-registry.js' {
+declare module '../codec-kit.js' {
   interface MasterCodecRegistry {
     empty: typeof Empty;
     static: typeof Static;

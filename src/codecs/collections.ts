@@ -13,7 +13,7 @@ import {
 import type { Uint, Bool } from './scalars.js';
 import type { Custom, Range } from './ops.js';
 
-declare module '../core/codec-registry.js' {
+declare module '../codec-kit.js' {
   interface MasterCodecRegistry {
     list: typeof List;
     struct: typeof Struct;

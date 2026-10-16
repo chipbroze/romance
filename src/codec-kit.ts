@@ -7,6 +7,12 @@ export {
 } from './core/codec-registry.js';
 
 export type {
+  CodecRules,
+  CodecConstraints,
+  MasterCodecRegistry
+} from './core/codec-registry.js';
+
+export type {
   Rom,
   datasize
 } from './core/rom.js';
