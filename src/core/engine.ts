@@ -2,7 +2,7 @@
 
 import { SchemaGraph, type SchemaNode } from './schema-graph.js';
 import type { RomFormat } from './rom.js';
-import { CodecRegistry, type SessionApi } from './codec-registry.js';
+import { Codex, type SessionApi } from './codec-registry.js';
 import { Rom } from './rom.js';
 import * as assert from '../utils/assert.js';
 
@@ -285,9 +285,9 @@ class Engine {
     schemas: Map<string, { item: unknown }>;
     rom_format: RomFormat;
   }): Engine {
-    const codec_registry = new CodecRegistry([]);
+    const codex = new Codex([]);
     const schema_graphs = new Map([...schemas.entries()].map(([id, schema]) => {
-      return [id, new SchemaGraph(id, codec_registry).compile(schema.item)];
+      return [id, new SchemaGraph(id, codex).compile(schema.item)];
     }));
     return new Engine({
       hooks,

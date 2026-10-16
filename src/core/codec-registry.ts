@@ -301,7 +301,7 @@ abstract class CodecNode <Data = unknown, Formatted = Data> {
   abstract parse (formatted: Formatted): Data;
 }
 
-class CodecRegistry {
+class Codex {
   #codecs: Map<string, RomanceCodec> = new Map();
 
   constructor (extra_codecs: unknown[] = []) {
@@ -344,7 +344,7 @@ type RomanceCodec = SimpleCodec | CompositeCodec;
 type AnyRomanceCodec = AnySimpleCodec | AnyCompositeCodec;
 
 export {
-  CodecRegistry,
+  Codex,
   CodecNode,
   CodecKit,
   Rom // TODO: Bundle all necessary types in one easy module

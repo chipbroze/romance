@@ -11,7 +11,7 @@ import type {
   InputOf,
   DataOf,
   FormattedOf,
-  CodecRegistry,
+  Codex,
   SessionApi,
   CompileApi,
   RuntimeApi
@@ -120,12 +120,12 @@ function isRecord (obj: unknown): obj is Dict {
 
 class SchemaGraph {
   #tree: SchemaNode | null;
-  #codex: CodecRegistry;
+  #codex: Codex;
   #runtime: GraphRuntime | null;
   id: string;
   readonly compile_api: CompileApi
 
-  constructor (id: string, codex: CodecRegistry) {
+  constructor (id: string, codex: Codex) {
     this.id = id;
     this.#codex = codex;
     this.#tree = null;

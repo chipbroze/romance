@@ -1,7 +1,7 @@
 /* Project */
 
 import { Engine } from './engine.js';
-import { CodecRegistry } from './codec-registry.js';
+import { Codex } from './codec-registry.js';
 import { SchemaGraph } from './schema-graph.js';
 import { CacheMap, EvilMap } from '../utils/map-utils.js';
 import { type RomFormat } from './rom.js';
@@ -26,7 +26,7 @@ class Project {
   #rom_format: RomFormat;
 
   constructor ({ codex, schemas, hooks, profiles, rom_format }: {
-    codex: CodecRegistry;
+    codex: Codex;
     schemas: Map<string, { item: unknown }>;
     hooks: Map<string, Hook>;
     profiles?: ProfileRegistry | undefined;
@@ -48,7 +48,7 @@ class Project {
     rom_format: RomFormat;
   }): Project {
     return new Project({
-      codex: new CodecRegistry(codecs),
+      codex: new Codex(codecs),
       schemas: EvilMap.from(schemas),
       hooks: EvilMap.from(hooks),
       profiles,
