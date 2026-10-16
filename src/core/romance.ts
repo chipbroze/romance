@@ -39,12 +39,12 @@ type HookConfig = {
 
 type HooksRegistry = Record<string, HookConfig>;
 
-type CodecRegistry = Record<string, readonly string[]>
+type CodecMapping = Record<string, readonly string[]>
 
 type Manifest = {
   rom_format: RomFormat;
   registry: {
-    codecs: CodecRegistry;
+    codecs: CodecMapping;
     schemas: SchemaRegistry;
     hooks: HooksRegistry;
   };
@@ -173,11 +173,11 @@ async function importHooks (
 }
 
 async function importCodecs (
-  codec_registry: CodecRegistry
+  codec_mapping: CodecMapping
 ): Promise<unknown[]> {
   const codecs = await Promise.all(
-    Object.keys(codec_registry).map(async (path) => {
-      const exports = codec_registry[path]!;
+    Object.keys(codec_mapping).map(async (path) => {
+      const exports = codec_mapping[path]!;
       const module = await safeImport<Record<string, unknown>>(path);
 
       if (module == null) {
