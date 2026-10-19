@@ -1028,8 +1028,10 @@ const MeltedList = CodecKit.from<{
   },
   isValidArgs (args: Dict): args is MeltedListArgs {
     v.assert(struct_schema, args);
-    if (args.fields.some(field => field.item.kind !== 'array')) {
-      throw new Error(`Meltedlist fields must all decode to arrays`);
+    for (const field of args.fields) {
+      if (field.item.kind !== 'array') {
+        throw new Error(`Field ${field.name} does not decode to array`);
+      }
     }
     return true;
   },
