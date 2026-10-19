@@ -157,6 +157,10 @@ class Rom {
     })];
   }
 
+  get length (): number {
+    return this.#full_buffer.length;
+  }
+
   get #state (): Frame {
     return this.#stack[this.#stack.length - 1]!;
   }
@@ -225,7 +229,7 @@ class Rom {
     return clone;
   }
 
-  slice (length: number): Uint8Array {
+  subarray (length: number): Uint8Array {
     const view = this.#view;
     const index = this.#index;
 
@@ -233,7 +237,7 @@ class Rom {
     this.#index += length;
 
     const uint8 = new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
-    return uint8.slice(index, index + length);
+    return uint8.subarray(index, index + length);
   }
 
   set (source: Uint8Array): number {

@@ -888,7 +888,7 @@ const Bitlist = CodecKit.from<{
 
     return Kit.instance<Item['<Data>'][], Item['<Formatted>'][]>({
       decode: (rom) => {
-        const raw_bytes = rom.slice($packed_length);
+        const raw_bytes = rom.subarray($packed_length);
         const virtual = unpackBits(raw_bytes, $bitsize);
 
         return rom.mount(virtual, () => {
