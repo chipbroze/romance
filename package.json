@@ -10,10 +10,20 @@
   ],
   "author": "Chip Belpedio",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js",
-    "./codec-kit": "./dist/codec-kit.js",
-    "./codecs": "./dist/codecs/index.js"
+    ".": {
+      "default": "./dist/index.js",
+      "types": "./dist/index.d.js"
+    },
+    "./codec-kit": {
+      "default": "./dist/codec-kit.js",
+      "types": "./dist/codec-kit.d.js"
+    },
+    "./codecs": {
+      "default": "./dist/codecs/index.js",
+      "types": "./dist/codecs/index.d.js"
+    }
   },
   "imports": {
     "#root/*": "./dist/*",
@@ -36,7 +46,8 @@
     "test:slow": "RUN_SLOW=1 node --test './tests/**/*.test.js'",
     "test:system": "node --test './tests/system/**/*.test.js'",
     "build": "tsc",
-    "postbuild": "chmod +x dist/cli.js"
+    "postbuild": "chmod +x dist/cli.js",
+    "prepack": "npm run build"
   },
   "bugs": {
     "url": "https://github.com/chipbroze/romance/issues"
