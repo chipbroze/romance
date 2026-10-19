@@ -2,8 +2,11 @@
 import * as v from './valibot.js';
 
 import {
-  Lookup,
   type Dict
+} from '../utils/types.js';
+
+import {
+  Lookup,
 } from './helpers.js';
 
 import {

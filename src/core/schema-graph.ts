@@ -2,24 +2,23 @@
 import { clone, transform } from '../utils/transform.js';
 import { hex } from '../codecs/helpers.js';
 import { EvilMap } from '../utils/map-utils.js';
-import { CodecNode } from './codec-registry.js';
+import { CodecNode } from './codec-types.js';
 import './codecs.js'; // Ensure types are registered
 import type { Rom } from './rom.js';
+import type { Dict } from '../utils/types.js';
 import type {
   RomanceCodec,
   CodecInstance,
   InputOf,
   DataOf,
   FormattedOf,
-  Codex,
   SessionApi,
   CompileApi,
   RuntimeApi
-} from './codec-registry.js';
+} from './codec-types.js';
+import type { Codex } from './codec-registry.js';
 
 const transform_target = Symbol('transform_target');
-
-type Dict = Record<string, unknown>;
 
 interface StackNode {
   name: string;

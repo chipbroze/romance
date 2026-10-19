@@ -1,14 +1,11 @@
-"use strict";
 
+import type { Dict } from '../utils/types.js';
 import { Rom } from '../core/rom.js';
 import type {
   Datasize,
   CodecNode,
   CodecInstance
 } from '../codec-kit.js';
-
-type Dict <V = unknown> = Record<string, V>;
-type NumDict <V = unknown> = Record<number, V>;
 
 class Hex {
   #value: number | null;
@@ -118,18 +115,10 @@ function getAtPath (node: unknown, path: string[]) {
   return node;
 }
 
-function isUint (x: unknown): x is number {
-  return typeof x === 'number' && Number.isInteger(x) && x >= 0;
-}
-function isObj (x: unknown): x is Record<string, unknown> {
-  return x != null && typeof x === 'object';
-}
-function isStr (x: unknown): x is string {
-  return typeof x === 'string';
-}
 function asNode <Item extends CodecNode> (item: Item) {
   return item as CodecNode<Item['<Data>'], Item['<Formatted>']>;
 }
+
 function passthrough <Data, Formatted> (
   node: CodecNode<Data, Formatted>
 ): CodecInstance<Data, Formatted> {
@@ -150,12 +139,7 @@ export {
   hex,
   Lookup,
   getAtPath,
-  isUint,
-  isStr,
-  isObj,
   asNode,
   passthrough,
-  hasOnlyOne,
-  type Dict,
-  type NumDict
+  hasOnlyOne
 };

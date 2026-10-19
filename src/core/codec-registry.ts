@@ -1,171 +1,47 @@
-import type { Rom } from './rom.js';
 
-// ###########################################################################
-// Type Utilities
-// ###########################################################################
+import type {
+  Dict
+} from '../utils/types.js';
 
-type Dict = Record<string, unknown>;
+import type {
+  CodecRegistry,
+  CodecRules,
 
-// ###########################################################################
-// Apis
-// ###########################################################################
+  RomanceCodec,
+  CodecInstance,
+  CodecConfig,
+  DefaultConfig,
+  CompileApi,
+  RuntimeApi,
+  SimpleCodec,
+  CompositeCodec,
+  ConstructConstraint
+} from './codec-types.js';
 
-type SessionApi = {
-  getLib?: undefined | ((key: string) => unknown);
-  setLib?: undefined | ((key: string, value: unknown) => void);
-  fetch (ref: string): unknown;
-  transform <T> (ref: string, fn: (data: unknown) => T): T;
-};
 
-interface CompileApi <
-  Registry extends object = object
-> {
-  item <
-    Alias extends keyof Registry,
-    Args extends InputOf<Registry[Alias]>
-  > (
-    type: Alias | { type: Alias, name: string },
-    args: CodecConstraint<Alias, Args>
-  // `extends infer Codec` forces TS to resolve lazy indexed types
-  // immediately, avoiding `unknown` parameter inference in downstream codecs.
-  ): (Registry[Alias] extends infer Codec
-    ? CodecNodeFor<Codec, Args>
-    : never
-  );
-};
-
-type RuntimeApi <
-  Registry extends object = object
-> = {
-  item: CompileApi<Registry>['item'];
-  trace: (key: string, value: unknown) => void;
-  scratch: <T> (create: () => T) => T;
-  getLib: SessionApi['getLib'];
-  setLib: SessionApi['setLib'];
-  fetch: SessionApi['fetch'];
-  transform: SessionApi['transform'];
-};
-
-// ###########################################################################
-// Romance Codecs
-// ###########################################################################
-
-interface CodecConstraints <Args=Dict> {
-  never: Args extends never ? Args : never;
-};
-
-type CodecConstraint <Alias, Args> = (
-  Alias extends keyof CodecConstraints
-  ? CodecConstraints<Args>[Alias]
-  : Args
-);
-
-interface CodecRules <Args=Dict> {
-  list: (Args extends { item: infer I extends CodecNode }
-    ? [I['<Data>'][], I['<Formatted>'][]]
-    : never
-  );
-  item: (Args extends { item: infer I extends CodecNode }
-    ? [I['<Data>'], I['<Formatted>']]
-    : never
-  );
-};
-
-type RuleTuple <Codec, Args> = (
-  Codec extends { rule: infer Rule extends keyof CodecRules }
-  ? CodecRules<Args>[Rule]
-  : Codec extends SimpleCodec<string, Dict, infer D, infer F>
-  ? [D, F]
-  : never
-);
-type TupleNode <T> = (
-  T extends [infer D, infer F]
-  ? CodecNode<D, F>
-  : never
-);
-type CodecNodeFor <Codec, Args> = (
-  TupleNode<RuleTuple<Codec, Args>>
-);
-
-type CodecInstance <
-  Data = unknown,
-  Formatted = Data,
-  Registry extends object = CodecRegistry
-> = {
-  decode: (rom: Rom, api: RuntimeApi<Registry>) => Data;
-  encode: (data: Data, rom: Rom, api: RuntimeApi<Registry>) => void;
-  format: (data: Data, api: RuntimeApi<Registry>) => Formatted;
-  parse: (formatted: Formatted, api: RuntimeApi<Registry>) => Data;
-};
-
-type SimpleCodec <
-  Alias extends string = string,
-  Args extends Dict = Dict,
-  Data = unknown,
-  Formatted = Data,
-  Config extends CodecConfig = DefaultConfig
-> = {
-  // Used for lookup of types for schema creation
-  readonly alias: Alias;
-  // Used by parent nodes to validate child nodes
-  readonly kind: (
-    | 'number' | 'boolean' | 'string'
-    | 'array' | 'object'
-    | 'void' | 'unknown' | 'passthrough'
-  );
-  // Idempotent transformation from shorthand -> canonical args
-  normalizeArgs?: (args: Dict) => Dict;
-  // Asserts canonical args shape
-  isValidArgs?: (args: Dict) => args is Args;
-  // Create type instances
-  construct (
-    args: Args,
-    api: CompileApi<Config['registry']>
-  ): CodecInstance<Data, Formatted, Config['registry']>;
-};
-
-type ConstructConstraint <
-  ArgsShape extends Dict,
-  Config extends CodecConfig = CodecConfig
-> = (
-  args: ArgsShape,
-  api: CompileApi<Config['registry']>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-) => CodecInstance<any, any, Config['registry']>;
-
-type CompositeCodec <
-  Alias extends string = string,
-  ArgsShape extends Dict = Dict,
-  Config extends CodecConfig = DefaultConfig,
-  Construct extends ConstructConstraint<ArgsShape, Config> =
-    ConstructConstraint<ArgsShape, Config>,
-  Rule extends keyof CodecRules = keyof CodecRules
-> = {
-  readonly alias: Alias;
-  readonly kind: SimpleCodec['kind'];
-  readonly rule: Rule;
-  normalizeArgs?: (args: Dict) => Dict;
-  isValidArgs?: (args: Dict) => args is ArgsShape;
-  construct: Construct
-};
-
-type CodecConfig = {
-  registry: object
-};
-type DefaultConfig = {
-  registry: CodecRegistry
-};
+// #########################################################################
+// Helper Types
+// #########################################################################
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySimpleCodec = SimpleCodec<any, any, any, any, any>;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyCompositeCodec = CompositeCodec<any, any, any, any, any>;
+type AnyRomanceCodec = AnySimpleCodec | AnyCompositeCodec;
 
+// #########################################################################
+// Codec Configurations
+// Configurations wrap sub-registries to break circular evaluations
+// #########################################################################
 
 // Helper to strip out SubRegistry workaround
 type RuntimeConfig <C extends CodecConfig> = (
   Omit<C, 'registry'> & { registry: CodecRegistry }
 );
+
+// #########################################################################
+// Codec Registration
+// #########################################################################
 
 const registered_codecs = new Map<string, RomanceCodec>();
 
@@ -260,38 +136,8 @@ class CodecKit <
   }
 };
 
-// ###########################################################################
-// Master Codec Registry
-// ###########################################################################
-
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface CodecRegistry {}
 
 type CodecAlias = keyof CodecRegistry;
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type InputOf <T> = (
-  T extends SimpleCodec<any, infer Args, any, any, any>
-  ? Args
-  : T extends CompositeCodec<any, infer ArgsShape, any, any, any>
-  ? ArgsShape
-  : never
-);
-/* eslint-enable @typescript-eslint/no-explicit-any */
-
-type DataOf <Codec, Args = InputOf<Codec>> = RuleTuple<Codec, Args>[0];
-type FormattedOf <Codec, Args = InputOf<Codec>> = RuleTuple<Codec, Args>[1];
-
-abstract class CodecNode <Data = unknown, Formatted = Data> {
-  declare readonly '<Data>': Data;
-  declare readonly '<Formatted>': Formatted;
-
-  abstract get kind (): SimpleCodec['kind'];
-  abstract decode (rom: Rom): Data;
-  abstract encode (data: Data, rom: Rom): void;
-  abstract format (data: Data): Formatted;
-  abstract parse (formatted: Formatted): Data;
-}
 
 class Codex {
   #codecs: Map<string, RomanceCodec> = new Map();
@@ -332,25 +178,8 @@ function assertRomanceCodec (
   // TODO: Validate decode/encode/format/parse methods
 }
 
-type RomanceCodec = SimpleCodec | CompositeCodec;
-type AnyRomanceCodec = AnySimpleCodec | AnyCompositeCodec;
-
 export {
   Codex,
-  CodecNode,
   CodecKit
 };
-export type {
-  CodecRegistry,
-  CodecRules,
-  CodecConstraints,
 
-  RomanceCodec,
-  CodecInstance,
-  InputOf,
-  DataOf,
-  FormattedOf,
-  SessionApi,
-  CompileApi,
-  RuntimeApi
-};

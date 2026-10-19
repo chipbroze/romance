@@ -1,5 +1,6 @@
 import * as v from './valibot.js';
-import { type Dict, asNode, passthrough } from './helpers.js';
+import { asNode, passthrough } from './helpers.js';
+import { type Dict } from '../utils/types.js';
 
 import {
   CodecKit,

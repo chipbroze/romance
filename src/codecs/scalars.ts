@@ -1,5 +1,6 @@
 import * as v from './valibot.js';
-import { Lookup, hex, type Dict, type NumDict } from './helpers.js';
+import { type Dict, type NumDict } from '../utils/types.js';
+import { Lookup, hex } from './helpers.js';
 
 import {
   type Datasize,

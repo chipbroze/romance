@@ -1,15 +1,17 @@
 import * as v from './valibot.js';
 
 import {
+  type Dict,
+  type NumDict,
   isObj,
-  isStr,
+  isStr
+} from '../utils/types.js';
+import {
   Lookup,
   hex,
   getAtPath,
   asNode,
   passthrough,
-  type Dict,
-  type NumDict
 } from './helpers.js';
 
 import {
