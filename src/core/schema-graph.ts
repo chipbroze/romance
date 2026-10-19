@@ -274,10 +274,18 @@ function validateArgs (
   Codec: RomanceCodec,
   args: Dict
 ): Dict {
-  if (Codec.isValidArgs && !Codec.isValidArgs(args)) {
-    throw new Error(`Invalid args for type ${Codec}: ${args}`);
+  try {
+    if (Codec.isValidArgs(args)) {
+      return args;
+    } else {
+      throw 'unknown';
+    }
+  } catch (e) {
+    throw new Error(
+      `Invalid args for type ${Codec.alias}: ${JSON.stringify(args)}`,
+      { cause: e }
+    );
   }
-  return args;
 }
 
 class SchemaNode <

@@ -6,6 +6,7 @@ import { SchemaGraph, SchemaNode } from '#root/core/schema-graph.js';
 describe('SchemaGraph', () => {
   const MethodName = {
     alias: 'method_name',
+    isValidArgs: () => true,
     construct: () => ({
       decode () { return 'decoded'; },
       encode () { return 'encoded'; },

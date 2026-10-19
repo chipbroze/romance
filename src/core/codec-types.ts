@@ -87,7 +87,7 @@ type SimpleCodec <
   // Idempotent transformation from shorthand -> canonical args
   normalizeArgs?: (args: Dict) => Dict;
   // Asserts canonical args shape
-  isValidArgs?: (args: Dict) => args is Args;
+  isValidArgs: (args: Dict) => args is Args;
   // Create type instances
   construct (
     args: Args,
@@ -116,7 +116,7 @@ type CompositeCodec <
   readonly kind: SimpleCodec['kind'];
   readonly rule: Rule;
   normalizeArgs?: (args: Dict) => Dict;
-  isValidArgs?: (args: Dict) => args is ArgsShape;
+  isValidArgs: (args: Dict) => args is ArgsShape;
   construct: Construct
 };
 

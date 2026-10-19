@@ -17,6 +17,7 @@ import {
 function createMockGraph (id, methods = {}) {
   const MockCodec = {
     alias: id,
+    isValidArgs: () => true,
     construct () {
       return {
         decode: (rom) => methods.decode?.(rom),
