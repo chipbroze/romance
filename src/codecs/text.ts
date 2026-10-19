@@ -125,14 +125,14 @@ type TextStrArgs <
   Table extends NumDict<string> = NumDict<string>
 > = {
   table: Table;
-  size: Datasize;
+  size?: Datasize;
   pad?: keyof Table;
   mode: ListModeSpec<string>;
 };
 
 const text_str_schema = v.object({
   table: v.num_dict(v.string()),
-  size: v.datasize(),
+  size: v.optional(v.datasize()),
   pad: v.optional(v.any()),
   mode: list_mode_schema
 });
@@ -171,8 +171,11 @@ const TextStr = CodecKit.from<{
     const $pad = pad != null ? table[pad] as string : null;
     const $length = mode.key === 'length' ? mode.arg as number : null;
     const $list = api.item('list', {
-      item: api.item('enum', { values: table, size }),
-      mode
+      mode,
+      item: api.item('enum', {
+        values: table,
+        ...(size == null ? {} : { size })
+      })
     });
 
     return Kit.instance<string, string>({
