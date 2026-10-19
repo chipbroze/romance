@@ -224,8 +224,8 @@ const Enum = UintKit.simple({
     const keys = Object.keys(values).map(Number);
     const max_key = Math.max(...keys);
 
-    if (max_key > getSizeMax(size)) {
-      throw new Error(`Found uint size exceeding max: ${max_key}`);
+    if (max_key > getSizeMax(size || 'byte')) {
+      throw new Error(`Found uint size exceeding max: ${max_key} > ${size}`);
     }
     if (!size && keys.some(k => k > 0xFF)) {
       throw new Error('Must specify size if enum keys > 0xFF');
