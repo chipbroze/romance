@@ -39,7 +39,7 @@ const dereference_schema = v.object({
   item: v.node(),
   reference: v.node(),
   org: v.uint(),
-  warn: v.optional(v.uint()),
+  warn: v.nullish(v.uint()),
   toReference: v.function(),
   toAddress: v.function(),
 });
@@ -106,7 +106,7 @@ type ListIndexArgs <Item extends CodecNode = CodecNode> = {
 const list_index_schema = v.object({
   item: v.node(),
   org: v.uint(),
-  warn: v.optional(v.uint()),
+  warn: v.nullish(v.uint()),
   base: v.optional(v.uint()),
   chunk: v.uint(),
   size: v.optional(v.datasize()),
@@ -149,7 +149,7 @@ type PointerArgs <
 
 const pointer_schema = v.object({
   org: v.uint(),
-  warn: v.optional(v.uint()),
+  warn: v.nullish(v.uint()),
   base: v.optional(v.uint()),
   item: v.node(),
   size: v.optional(v.datasize()),

@@ -143,7 +143,7 @@ type RangeArgs <Item extends CodecNode = CodecNode> = {
 const range_schema = v.object({
   item: v.node(),
   org: v.uint(),
-  warn: v.optional(v.uint()),
+  warn: v.nullish(v.uint()),
 });
 
 const Range = CodecKit.composite({

@@ -368,8 +368,8 @@ const segment_list_schema = v.object({
   item: v.node(),
   length: v.uint(),
   org: v.uint(),
+  warn: v.nullish(v.uint()),
   base: v.optional(v.uint()),
-  warn: v.optional(v.uint()),
   size: v.optional(v.datasize()),
 });
 
