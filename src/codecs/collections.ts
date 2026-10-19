@@ -677,9 +677,7 @@ const SplitList = CodecKit.from<{
   },
   isValidArgs (args: Dict): args is SplitArgs {
     v.assert(split_list_schema, args);
-    if (args.fields.some(field => field.item.kind !== 'array')) {
-      throw new Error(`Expected all items to be array/list types`);
-    }
+    assertArrayFields(args.fields);
     return true;
   },
   construct <
@@ -1014,6 +1012,14 @@ type MeltedListArgs <
   fields: ValidArrayFields<Fields>
 };
 
+function assertArrayFields (fields: FieldTuple): void {
+  for (const field of fields) {
+    if (!['array', 'unknown', 'passthrough'].includes(field.item.kind)) {
+      throw new Error(`Field ${field.name} does not decode to array`);
+    }
+  }
+}
+
 const MeltedList = CodecKit.from<{
   struct: typeof Struct
 }>().run(Kit => Kit.composite({
@@ -1028,11 +1034,7 @@ const MeltedList = CodecKit.from<{
   },
   isValidArgs (args: Dict): args is MeltedListArgs {
     v.assert(struct_schema, args);
-    for (const field of args.fields) {
-      if (field.item.kind !== 'array') {
-        throw new Error(`Field ${field.name} does not decode to array`);
-      }
-    }
+    assertArrayFields(args.fields);
     return true;
   },
   construct <
