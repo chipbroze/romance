@@ -20,6 +20,9 @@
     "#tests/*": "./tests/*",
     "#test": "./tests/helpers/test.js"
   },
+  "files": [
+    "dist"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/chipbroze/romance.git"
