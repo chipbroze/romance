@@ -151,26 +151,30 @@ class SchemaGraph {
     const look = new EvilMap<Dict, SchemaNode>();
     const root = clone([schema]);
 
-    transform(root, (_, value: unknown) => {
-      // Ensures duplicate (and recursive) items are only processed once
-      if (this.#isNodeSpec(value)) {
-        if (seen.has(value)) {
-          value = seen.get(value);
-        } else {
-          const node = this.#compileNode(value);
-          const args = node[transform_target] as Dict;
-          seen.set(value, node);
-          look.set(args, node);
-          value = args;
+    try {
+      transform(root, (_, value: unknown) => {
+        // Ensures duplicate (and recursive) items are only processed once
+        if (this.#isNodeSpec(value)) {
+          if (seen.has(value)) {
+            value = seen.get(value);
+          } else {
+            const node = this.#compileNode(value);
+            const args = node[transform_target] as Dict;
+            seen.set(value, node);
+            look.set(args, node);
+            value = args;
+          }
         }
-      }
-      return value;
-    }, (_, value: unknown) => {
-      return (look.has(value as Dict)
-        ? look.get(value as Dict).build(this.compile_api)
-        : value
-      );
-    });
+        return value;
+      }, (_, value: unknown) => {
+        return (look.has(value as Dict)
+          ? look.get(value as Dict).build(this.compile_api)
+          : value
+        );
+      });
+    } catch (e) {
+      throw new Error(`Schema Compile Error: ${this.id}`, { cause: e });
+    }
 
     if (root[0] instanceof SchemaNode) {
       this.#tree = root[0];
