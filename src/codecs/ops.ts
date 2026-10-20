@@ -763,29 +763,32 @@ const Entity = CodecKit.from<{
     const $path = path;
     const $lookup = Lookup.fromNumRecord(inject);
 
-    function $getEnum (api: RuntimeApi) {
-      return api.transform($from, (data: unknown) => {
-        if (!Array.isArray(data)) {
-          throw new Error(`Entity node expects "${$from}" data to be an array`);
+    function toEnum (data: unknown) {
+      if (!Array.isArray(data)) {
+        throw new Error(`Entity node expects "${$from}" data to be an array`);
+      }
+      const table = data as unknown[];
+      const seen = new Set<string>();
+      const enum_array = table.map((ent, i) => {
+        const raw_value = getAtPath(ent, $path);
+        if (!isStr(raw_value)) {
+          throw new Error(`Path ${$path} does not yield string for ${$from}`);
         }
-        const table = data as unknown[];
-        const seen = new Set<string>();
-        const enum_array = table.map((ent, i) => {
-          const raw_value = getAtPath(ent, $path);
-          if (!isStr(raw_value)) {
-            throw new Error(`Path ${$path} does not yield string for ${$from}`);
-          }
-          const value = (seen.has(raw_value)
-            ? `${raw_value}[${i}]`
-            : raw_value
-          );
-          seen.add(value);
-          return value;
-        });
-
-        api.setLib!($lib_id, enum_array);
-        return enum_array;
+        const value = (seen.has(raw_value)
+          ? `${raw_value}[${i}]`
+          : raw_value
+        );
+        seen.add(value);
+        return value;
       });
+
+      return enum_array;
+    }
+
+    function $getEnum (api: RuntimeApi) {
+      const enum_array = api.transform($from, toEnum);
+      api.setLib!($lib_id, enum_array);
+      return enum_array;
     }
 
     return {
