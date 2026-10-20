@@ -772,7 +772,9 @@ const Entity = CodecKit.from<{
       const enum_array = table.map((ent, i) => {
         const raw_value = getAtPath(ent, $path);
         if (!isStr(raw_value)) {
-          throw new Error(`Path ${$path} does not yield string for ${$from}`);
+          throw new Error(
+            `Path "${$lib_id}" does not yield string for: ${JSON.stringify(ent)}`
+          );
         }
         const value = (seen.has(raw_value)
           ? `${raw_value}[${i}]`
