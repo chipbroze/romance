@@ -312,7 +312,10 @@ const TextScript = CodecKit.from<{
         const formatted = $script.format(list);
 
         return formatted.map(item => {
-          const [name, value] = Object.entries(item)[0]!;
+          const [name, value] = (typeof item === 'string'
+            ? [item]
+            : Object.entries(item)[0]!
+          );
           return (name === text_script_text_name ? value as string
             : value == null ? `[${name}]`
             : `[${name}:${value}]`
@@ -328,7 +331,7 @@ const TextScript = CodecKit.from<{
           } else {
             const [op, str] = token.slice(1, -1).split(':');
             const arg = $number_ops.has(op!) ? +str! : str;
-            return { [op!]: arg };
+            return arg == null ? op : { [op!]: arg };
           }
         }) as typeof $script['<Formatted>']);
       }
