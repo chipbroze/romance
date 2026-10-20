@@ -30,6 +30,9 @@ export const num_dict = <
   value_schema
 );
 
-export const node = () => v.instance(CodecNode as v.Class);
 export const datasize = () => v.picklist(Rom.datasizes);
 export const kind = () => v.picklist(codec_kinds);
+export const node = () => v.custom<CodecNode>(
+  (input): input is CodecNode => input instanceof CodecNode,
+  "Expected an instance of CodecNode"
+);

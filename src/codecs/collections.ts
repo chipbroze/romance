@@ -508,7 +508,7 @@ const Bitfield = CodecKit.from<{
   struct: typeof Struct
 }>().run(Kit => Kit.composite({
   alias: 'bitfield',
-  kind: 'number',
+  kind: 'object',
   rule: 'fields',
   normalizeArgs (args: Dict) {
     let fields = args.fields;
@@ -760,7 +760,7 @@ const Bitmask = CodecKit.from<{
   bitfield: typeof Bitfield
 }>().run(Kit => Kit.simple({
   alias: 'bitmask',
-  kind: 'array',
+  kind: 'unknown',
   isValidArgs (args: Dict): args is BitmaskArgs {
     v.assert(bitmask_schema, args);
 
@@ -1014,7 +1014,7 @@ type MeltedListArgs <
 
 function assertArrayFields (fields: FieldTuple): void {
   for (const field of fields) {
-    if (field.item.kind !== 'array') {
+    if (field.item.kind.some(k => k !== 'array')) {
       throw new Error(`Field ${field.name} does not decode to array`);
     }
   }

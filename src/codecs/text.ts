@@ -245,7 +245,7 @@ const TextScript = CodecKit.from<{
   script: typeof Script;
 }>().run(Kit => Kit.composite({
   alias: 'text_script',
-  kind: 'array',
+  kind: ['array', 'string'],
   rule: 'custom', // TODO NEEDS NEW RULE
   normalizeArgs (args) {
     const { options } = Fork.normalizeArgs!({ options: args.ops });
@@ -259,9 +259,10 @@ const TextScript = CodecKit.from<{
       }
     }
     for (const op of args.ops) {
-      const kind = op.item.kind;
-      if (kind !== 'number' && kind !== 'string' && kind !== 'void') {
-        throw new Error(`Unexpected op item kind: ${kind}`);
+      for (const kind of op.item.kind) {
+        if (!['number', 'string', 'void'].includes(kind)) {
+          throw new Error(`Unexpected op item kind: ${kind}`);
+        }
       }
       if (op.name === text_script_text_name) {
         throw new Error(`Cannot name TextScript op "${text_script_text_name}"`);
@@ -298,7 +299,7 @@ const TextScript = CodecKit.from<{
     });
 
     const $number_ops = new Set(ops.filter(op => {
-      return op.item.kind === 'number';
+      return op.item.kind[1] === 'number';
     }).map(op => op.name));
 
     return Kit.instance<typeof $script['<Data>'], string>({

@@ -101,7 +101,7 @@ const UintKit = CodecKit.from<{ uint: typeof Uint }>();
 
 const HexInt = UintKit.simple({
   alias: 'xint',
-  kind: 'number',
+  kind: ['number', 'string'],
   isValidArgs (args: Dict): args is UintArgs {
     return Uint.isValidArgs!(args);
   },
@@ -235,14 +235,11 @@ const Enum = UintKit.simple({
   },
   construct ({ values, size='byte' }, api) {
     const $uint = api.item('uint', { size });
-    const lookup = (Array.isArray(values)
-      ? Lookup.fromArray(values)
-      : Lookup.fromNumRecord(values)
-    );
+    const $lookup = Lookup.fromNumRecord(values);
 
     return {
-      decode: (rom) => lookup.by_key($uint.decode(rom)),
-      encode: (str, rom) => $uint.encode(lookup.by_value(str), rom),
+      decode: (rom) => $lookup.by_key($uint.decode(rom)),
+      encode: (str, rom) => $uint.encode($lookup.by_value(str), rom),
       format: (data) => data,
       parse: (data) => data
     };
@@ -260,7 +257,7 @@ const tile_schema = v.object({
 // TODO: Reduce use of `!` for potentially undefined variables
 const Tile = CodecKit.simple({
   alias: 'tile',
-  kind: 'array',
+  kind: ['array', 'string'],
   isValidArgs (args: Dict): args is TileArgs {
     v.assert(tile_schema, args);
     return true;

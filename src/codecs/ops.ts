@@ -389,7 +389,7 @@ type ForkFormattedFor<
   ControlData extends ForkControl,
   Options extends ForkOptions<ControlData>
 > = {
-  [I in keyof Options]: (Options[I]['item']['kind'] extends 'void'
+  [I in keyof Options]: (Options[I]['item']['kind'][1] extends 'void'
     ? Options[I]['name']
     : Record<Options[I]['name'], Options[I]['item']['<Formatted>']>
   );
@@ -441,7 +441,7 @@ const Fork = CodecKit.composite({
   },
   isValidArgs (args: Dict): args is ForkArgs {
     v.assert(fork_schema, args);
-    const control_kind = args.control.kind;
+    const control_kind = args.control.kind[0];
     if (!['number', 'boolean', 'string'].includes(control_kind)) {
       throw new Error([
         `Expected fork control to return type: number, boolean, or string.`,
@@ -586,7 +586,7 @@ const Fork = CodecKit.composite({
         const option = $getOption(name, api);
         const child = option.item.format(value);
         return (
-          option.item.kind === 'void' ? name : { [name]: child }
+          option.item.kind[1] === 'void' ? name : { [name]: child }
         ) as ForkFormatted; // Not the best cast...
       },
       parse: (data, api) => {
@@ -751,7 +751,7 @@ const Entity = CodecKit.from<{
   uint: typeof Uint
 }>().simple({
   alias: 'entity',
-  kind: 'number', // TODO: Technically, formatted is string...
+  kind: ['number', 'string'],
   isValidArgs (args: Dict): args is EntityArgs {
     v.assert(entity_schema, args);
     return true;

@@ -13,7 +13,7 @@ abstract class CodecNode <Data = unknown, Formatted = Data> {
   declare readonly '<Data>': Data;
   declare readonly '<Formatted>': Formatted;
 
-  abstract get kind (): CodecKind;
+  abstract get kind (): CodecKindPair;
   abstract decode (rom: Rom): Data;
   abstract encode (data: Data, rom: Rom): void;
   abstract format (data: Data): Formatted;
@@ -25,7 +25,7 @@ type CodecInstance <
   Formatted = Data,
   Registry extends object = CodecRegistry
 > = {
-  kind?: CodecKind;
+  kind?: CodecKinds;
   decode: (rom: Rom, api: RuntimeApi<Registry>) => Data;
   encode: (data: Data, rom: Rom, api: RuntimeApi<Registry>) => void;
   format: (data: Data, api: RuntimeApi<Registry>) => Formatted;
@@ -82,6 +82,8 @@ const codec_kinds = [
 ] as const;
 
 type CodecKind = typeof codec_kinds[number];
+type CodecKindPair = readonly [CodecKind, CodecKind];
+type CodecKinds = CodecKind | CodecKindPair;
 
 type SimpleCodec <
   Alias extends string = string,
@@ -93,7 +95,7 @@ type SimpleCodec <
   // Used for lookup of types for schema creation
   readonly alias: Alias;
   // Used by parent nodes to validate child nodes
-  readonly kind: CodecKind;
+  readonly kind: CodecKinds;
   // Idempotent transformation from shorthand -> canonical args
   normalizeArgs?: (args: Dict) => Dict;
   // Asserts canonical args shape
@@ -123,7 +125,7 @@ type CompositeCodec <
   Rule extends keyof CodecRules = keyof CodecRules
 > = {
   readonly alias: Alias;
-  readonly kind: CodecKind;
+  readonly kind: CodecKinds;
   readonly rule: Rule;
   normalizeArgs?: (args: Dict) => Dict;
   isValidArgs: (args: Dict) => args is ArgsShape;
