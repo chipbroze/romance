@@ -787,7 +787,7 @@ const Bitmask = CodecKit.from<{
     const fields = flags.map((flag, i) => {
       return {
         name: flag,
-        mask: 1 << i,
+        mask: 1 << i >>> 0,
         shift: i,
         item: bool_item
       };
