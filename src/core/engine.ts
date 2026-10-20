@@ -334,7 +334,14 @@ class Engine {
 
     this.#hooks.forEach(hook => hook(data));
 
-    return this.format(data);
+    const formatted = this.format(data);
+
+    if (validate) {
+      const parsed = this.parse(formatted);
+      assert.deepEqual(data, parsed);
+    }
+
+    return formatted;
   }
 
   decode (rom_buffer: Uint8Array) {
