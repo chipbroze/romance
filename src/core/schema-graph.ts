@@ -3,7 +3,8 @@ import { clone, transform } from '../utils/transform.js';
 import { hex } from '../codecs/helpers.js';
 import { EvilMap } from '../utils/map-utils.js';
 import { CodecNode } from './codec-types.js';
-import './codecs.js'; // Ensure types are registered
+
+import type { Codex } from './codex.js';
 import type { Rom } from './rom.js';
 import type { Dict } from '../utils/types.js';
 import type {
@@ -16,7 +17,6 @@ import type {
   CompileApi,
   RuntimeApi
 } from './codec-types.js';
-import type { Codex } from './codec-registry.js';
 
 const transform_target = Symbol('transform_target');
 

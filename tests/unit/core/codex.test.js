@@ -1,7 +1,6 @@
 import assert from 'node:assert';
 import { describe, it } from '#test';
-import '#root/core/codecs.js';
-import { Codex } from '#root/core/codec-registry.js';
+import { Codex } from '#root/core/codex.js';
 
 describe('Codex', () => {
   it('registers types with all required methods and alias', () => {

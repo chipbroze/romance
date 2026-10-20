@@ -1,6 +1,5 @@
 import assert from 'node:assert';
 import { describe, it } from '#test';
-import '#root/core/codecs.js';
 import { Project } from '#root/core/project.js';
 
 describe('Project Schema Compilation', () => {

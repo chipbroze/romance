@@ -1,7 +1,6 @@
 import assert from 'node:assert';
 import { describe, it } from '#test';
-import '#root/core/codecs.js';
-import { Codex } from '#root/core/codec-registry.js';
+import { Codex } from '#root/core/codex.js';
 import { SchemaGraph } from '#root/core/schema-graph.js';
 import {
   Engine,

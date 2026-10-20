@@ -1,6 +1,6 @@
 export {
   CodecKit,
-} from './core/codec-registry.js';
+} from './core/codec-kit.js';
 
 export {
   CodecNode,
