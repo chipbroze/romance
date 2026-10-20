@@ -5,10 +5,12 @@ function assertIt <Args extends unknown[]> (
 ) {
   return (...args: Args): void => {
     const err = func(...args);
-    if (typeof err === 'string') {
-      throw new Error(err);
-    } else {
-      throw (err);
+    if (err) {
+      if (typeof err === 'string') {
+        throw new Error(err);
+      } else {
+        throw (err);
+      }
     }
   };
 }
