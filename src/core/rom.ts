@@ -19,10 +19,13 @@ function capital (str: string): string {
 class RomRangeError extends Error {
   constructor (
     public readonly kind: range_error_kind,
-    public readonly context: range_error_context
+    public readonly context: range_error_context,
+    format: (x: number | null) => string
   ) {
     const { address, range, mode } = context;
-    super(`${capital(mode)} ${kind} at ${address} outside (${range[0]}, ${range[1]})`);
+    const [org, r0, r1] = [address, range[0], range[1]].map(format)
+
+    super(`${capital(mode)} ${kind} at ${org} outside (${r0}, ${r1})`);
     this.name = 'RomRangeError';
   }
 }
@@ -193,11 +196,14 @@ class Rom {
 
     if (error_kind != null) {
       throw new RomRangeError(error_kind, {
-        range: frame.range,
-        address: frame.cursor,
+        range: [
+          frame.range[0] + frame.base,
+          frame.range[1] + frame.base
+        ],
+        address: frame.cursor + frame.base,
         size,
         mode
-      });
+      }, this.#formatOffset.bind(this));
     }
   }
 
@@ -212,6 +218,12 @@ class Rom {
 
   #mapFrom (index: number) {
     return this.#mapper.mapFrom(index);
+  }
+
+  #formatOffset (index: number | null) {
+    if (index == null) return '[null]';
+    const hex = this.#mapFrom(index).toString(16);
+    return `$${hex.toUpperCase().padStart(6, '0')}`;
   }
 
   offset (offset?: number): number {
