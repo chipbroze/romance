@@ -435,7 +435,8 @@ const Fork = CodecKit.composite({
   isValidArgs (args: Dict): args is ForkArgs {
     v.assert(fork_schema, args);
     const control_kind = args.control.kind;
-    if (!['number', 'boolean', 'string'].includes(control_kind)) {
+    const unknown_kind = ['unknown', 'passthrough'].includes(control_kind);
+    if (!unknown_kind && !['number', 'boolean', 'string'].includes(control_kind)) {
       throw new Error([
         `Expected fork control to return type: number, boolean, or string.`,
         `Found ${control_kind}`
@@ -448,12 +449,19 @@ const Fork = CodecKit.composite({
         throw new Error(`Code field should not exist on options`);
       }
       if ('omit_control' in option) {
-        if (option.match.length !== 1 || typeof option.match[0] !== control_kind) {
+        if (
+          option.match.length !== 1 ||
+          (!unknown_kind && typeof option.match[0] !== control_kind)
+        ) {
           throw new Error('Omit control only allowed for single fixed match');
         }
       }
       for (const match of option.match) {
-        if (!isObj(match) && typeof match !== control_kind && typeof match !== 'function') {
+        if (
+          !isObj(match) &&
+          (!unknown_kind && typeof match !== control_kind) &&
+          typeof match !== 'function'
+        ) {
           throw new Error(`Expected match to be range object, function, or to align with control`);
         }
         if (isObj(match)) {
