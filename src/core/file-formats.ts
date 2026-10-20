@@ -40,16 +40,16 @@ const formats_list = [
   }),
   new FileFormat({
     name: 'json',
-    format: (data: unknown) => JSON.stringify(addIDs(data), null, 2),
-    parse: (data: string) => removeIDs(JSON.parse(data)),
+    format: (data: unknown) => JSON.stringify(data, null, 2),
+    parse: (data: string) => JSON.parse(data),
     valid: () => true
   }),
   new FileFormat({
     name: 'yaml',
     format: (data: unknown) => YAML.stringify(
-      addIDs(JSON.parse(JSON.stringify(data)))
+      JSON.parse(JSON.stringify(data)) // TODO: Annotate reason for clone
     ),
-    parse: (data: string) => removeIDs(YAML.parse(data)),
+    parse: (data: string) => YAML.parse(data),
     valid: () => true
   })
 ];
@@ -63,23 +63,6 @@ const file_formats = EvilMap.fromRecord(formats_list.reduce((obj, f) => {
 
 function isValidFormat (format: string): format is FileFormatName {
   return file_formats.has(format);
-}
-
-function idKey (i: number): string {
-  return `----------------------------------------- ${i}`;
-}
-
-function addIDs (data: unknown): unknown {
-  return Array.isArray(data) ? data.map((item, i) => {
-    return { [idKey(i)]: item };
-  }) : data;
-}
-
-function removeIDs (data: unknown): unknown {
-  return Array.isArray(data) ? data.map((item, i) => {
-    const key = idKey(i);
-    return (key in item) ? item[key] : item;
-  }) : data;
 }
 
 export { file_formats, isValidFormat };
