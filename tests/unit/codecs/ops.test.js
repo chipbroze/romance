@@ -137,6 +137,7 @@ describe('Ops', () => {
     it('handles runtime node instantiation', () => {
       const resolver = api.item(Resolver.alias, {
         from: ['test_ref'],
+        kind: 'number',
         self: { size: 'word' },
         toNode (self, data) {
           const size = data.test_ref[0].size || self.size;

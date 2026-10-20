@@ -46,7 +46,7 @@ const dereference_schema = v.object({
 
 const Dereference = CodecKit.composite({
   alias: 'dereference',
-  kind: 'unknown',
+  kind: 'passthrough',
   rule: 'item', 
   isValidArgs (args: Dict): args is DereferenceArgs {
     v.assert(dereference_schema, args);
@@ -63,6 +63,7 @@ const Dereference = CodecKit.composite({
     const $toReference = input.toReference;
 
     return CodecKit.instance<Item['<Data>'], Item['<Formatted>']>({
+      kind: $item.kind,
       decode: (rom) => {
         const address = $toAddress($reference.decode(rom));
         return rom.jsr({ start: address, end: $warn }, () => {
@@ -159,7 +160,7 @@ const Pointer = CodecKit.from<{
   list_index: typeof ListIndex
 }>().run(Kit => Kit.composite({
   alias: 'pointer',
-  kind: 'unknown',
+  kind: 'passthrough',
   rule: 'item',
   isValidArgs (args: Dict): args is PointerArgs {
     v.assert(pointer_schema, args);
@@ -203,7 +204,7 @@ const PointerIndex = CodecKit.from<{
   pointer: typeof Pointer
 }>().run(Kit => Kit.composite({
   alias: 'pointer_index',
-  kind: 'unknown',
+  kind: 'passthrough',
   rule: 'item',
   isValidArgs (args: Dict): args is PointerIndexArgs {
     v.assert(pointer_index_schema, args);

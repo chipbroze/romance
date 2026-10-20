@@ -13,7 +13,7 @@ abstract class CodecNode <Data = unknown, Formatted = Data> {
   declare readonly '<Data>': Data;
   declare readonly '<Formatted>': Formatted;
 
-  abstract get kind (): SimpleCodec['kind'];
+  abstract get kind (): CodecKind;
   abstract decode (rom: Rom): Data;
   abstract encode (data: Data, rom: Rom): void;
   abstract format (data: Data): Formatted;
@@ -25,6 +25,7 @@ type CodecInstance <
   Formatted = Data,
   Registry extends object = CodecRegistry
 > = {
+  kind?: CodecKind;
   decode: (rom: Rom, api: RuntimeApi<Registry>) => Data;
   encode: (data: Data, rom: Rom, api: RuntimeApi<Registry>) => void;
   format: (data: Data, api: RuntimeApi<Registry>) => Formatted;
@@ -69,6 +70,19 @@ type DefaultConfig = {
   registry: CodecRegistry
 };
 
+const codec_kinds = [
+  'number',
+  'boolean',
+  'string',
+  'array',
+  'object',
+  'void',
+  'unknown',
+  'passthrough'
+] as const;
+
+type CodecKind = typeof codec_kinds[number];
+
 type SimpleCodec <
   Alias extends string = string,
   Args extends Dict = Dict,
@@ -79,11 +93,7 @@ type SimpleCodec <
   // Used for lookup of types for schema creation
   readonly alias: Alias;
   // Used by parent nodes to validate child nodes
-  readonly kind: (
-    | 'number' | 'boolean' | 'string'
-    | 'array' | 'object'
-    | 'void' | 'unknown' | 'passthrough'
-  );
+  readonly kind: CodecKind;
   // Idempotent transformation from shorthand -> canonical args
   normalizeArgs?: (args: Dict) => Dict;
   // Asserts canonical args shape
@@ -113,7 +123,7 @@ type CompositeCodec <
   Rule extends keyof CodecRules = keyof CodecRules
 > = {
   readonly alias: Alias;
-  readonly kind: SimpleCodec['kind'];
+  readonly kind: CodecKind;
   readonly rule: Rule;
   normalizeArgs?: (args: Dict) => Dict;
   isValidArgs: (args: Dict) => args is ArgsShape;
@@ -202,13 +212,15 @@ type RuntimeApi <
 };
 
 export {
-  CodecNode
+  CodecNode,
+  codec_kinds
 }
 export type {
   CodecRegistry,
   CodecRules,
   CodecConstraints,
 
+  CodecKind,
   SimpleCodec,
   CompositeCodec,
   RomanceCodec,

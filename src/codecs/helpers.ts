@@ -4,7 +4,8 @@ import { Rom } from '../core/rom.js';
 import type {
   Datasize,
   CodecNode,
-  CodecInstance
+  CodecInstance,
+  CodecKind
 } from '../codec-kit.js';
 
 class Hex {
@@ -123,11 +124,27 @@ function passthrough <Data, Formatted> (
   node: CodecNode<Data, Formatted>
 ): CodecInstance<Data, Formatted> {
   return {
+    kind: node.kind,
     decode: (rom) => node.decode(rom),
     encode: (data, rom) => node.encode(data, rom),
     format: (data) => node.format(data),
     parse: (data) => node.parse(data)
   };
+}
+
+function getKind (x: unknown): CodecKind {
+  const type = Array.isArray(x) ? 'array' : typeof x;
+  switch (type) {
+    case 'function':
+    case 'bigint':
+    case 'symbol':
+      return 'unknown';
+    case 'undefined':
+      return 'void';
+    default: {
+      return type;
+    }
+  }
 }
 
 function hasOnlyOne (obj: Dict, keys: string[]) {
@@ -141,5 +158,6 @@ export {
   getAtPath,
   asNode,
   passthrough,
+  getKind,
   hasOnlyOne
 };

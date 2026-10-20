@@ -6,6 +6,7 @@ import {
   isObj,
   isStr
 } from '../utils/types.js';
+
 import {
   Lookup,
   hex,
@@ -18,7 +19,8 @@ import {
   CodecKit,
   type Datasize,
   type CodecNode,
-  type Rom
+  type Rom,
+  type CodecKind
 } from '../codec-kit.js';
 
 import {
@@ -148,7 +150,7 @@ const range_schema = v.object({
 
 const Range = CodecKit.composite({
   alias: 'range',
-  kind: 'passthrough', // TODO: Need to implement 'passthrough'
+  kind: 'passthrough',
   rule: 'item',
   isValidArgs (args: Dict): args is RangeArgs {
     v.assert(range_schema, args);
@@ -172,6 +174,7 @@ const Range = CodecKit.composite({
     }
 
     return CodecKit.instance<Item['<Data>'], Item['<Formatted>']>({
+      kind: $item.kind,
       decode: (rom) => {
         return $jsr(rom, () => $item.decode(rom));
       },
@@ -225,6 +228,7 @@ const Modifier = CodecKit.composite({
     const $item = asNode(item);
 
     return CodecKit.instance<Item['<Data>'], Item['<Formatted>']>({
+      kind: $item.kind,
       decode: (rom, api) => {
         return decoder.call($self, $item.decode(rom), rom, api);
       },
@@ -274,6 +278,7 @@ const View = CodecKit.composite({
     const $item = asNode(item);
 
     return CodecKit.instance<Item['<Data>'], Formatted>({
+      kind: $item.kind,
       decode: (rom) => {
         return $item.decode(rom);
       },
@@ -297,6 +302,7 @@ const View = CodecKit.composite({
 type CustomArgs <Data = any, Formatted = Data, Input extends Dict = Dict> = {
   args?: Input;
   construct: (input: Input, api: CompileApi) => {
+    kind?: CodecKind;
     decode?: (rom: Rom, api: RuntimeApi) => Data;
     encode?: (data: Data, rom: Rom, api: RuntimeApi) => void;
     format?: (data: Data, api: RuntimeApi) => Formatted;
@@ -323,9 +329,10 @@ const Custom = CodecKit.Complete.composite({
   ) {
     const { construct, args } = input;
     const $args = args || ({} as Input);
-    const { decode, encode, format, parse } = construct($args, api);
+    const { decode, encode, format, parse, kind } = construct($args, api);
 
     return CodecKit.Complete.instance<Data, Formatted>({
+      ...(kind == null ? {} : { kind }),
       decode: (rom, api) => {
         return decode?.(rom, api) || (null as Data);
       },
@@ -435,8 +442,7 @@ const Fork = CodecKit.composite({
   isValidArgs (args: Dict): args is ForkArgs {
     v.assert(fork_schema, args);
     const control_kind = args.control.kind;
-    const unknown_kind = ['unknown', 'passthrough'].includes(control_kind);
-    if (!unknown_kind && !['number', 'boolean', 'string'].includes(control_kind)) {
+    if (!['number', 'boolean', 'string'].includes(control_kind)) {
       throw new Error([
         `Expected fork control to return type: number, boolean, or string.`,
         `Found ${control_kind}`
@@ -449,19 +455,12 @@ const Fork = CodecKit.composite({
         throw new Error(`Code field should not exist on options`);
       }
       if ('omit_control' in option) {
-        if (
-          option.match.length !== 1 ||
-          (!unknown_kind && typeof option.match[0] !== control_kind)
-        ) {
+        if (option.match.length !== 1 || typeof option.match[0] !== control_kind) {
           throw new Error('Omit control only allowed for single fixed match');
         }
       }
       for (const match of option.match) {
-        if (
-          !isObj(match) &&
-          (!unknown_kind && typeof match !== control_kind) &&
-          typeof match !== 'function'
-        ) {
+        if (!isObj(match) && typeof match !== control_kind && typeof match !== 'function') {
           throw new Error(`Expected match to be range object, function, or to align with control`);
         }
         if (isObj(match)) {
@@ -667,6 +666,7 @@ type ResolverArgs <
 > = {
   self: Self;
   from: From;
+  kind: CodecKind;
   toNode: (
     self: Self,
     data: Record<From[number], unknown>,
@@ -677,6 +677,7 @@ type ResolverArgs <
 const resolver_schema = v.object({
   self: v.optional(v.dict()),
   from: v.array(v.string()),
+  kind: v.kind(),
   toNode: v.function(),
 });
 
@@ -700,7 +701,7 @@ const Resolver = CodecKit.Complete.composite({
     From extends readonly string[],
     Self extends Dict
   > (
-    { self, from, toNode }: ResolverArgs<Data, Formatted, From, Self>
+    { self, kind, from, toNode }: ResolverArgs<Data, Formatted, From, Self>
   ) {
     const $getNode = (
       api: typeof CodecKit.Complete.RuntimeApi
@@ -715,6 +716,7 @@ const Resolver = CodecKit.Complete.composite({
     };
 
     return CodecKit.Complete.instance<Data, Formatted>({
+      kind,
       decode: (rom, api) => {
         return $getNode(api).decode(rom) as Data;
       },

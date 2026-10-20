@@ -348,7 +348,7 @@ class SchemaNode <
     return this.#Codec.alias;
   }
   get kind () {
-    return this.#Codec.kind;
+    return this.#item?.kind || this.#Codec.kind;
   }
 
   decode (rom: Rom): DataOf<Codec, Args> {

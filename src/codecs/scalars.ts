@@ -1,6 +1,6 @@
 import * as v from './valibot.js';
 import { type Dict, type NumDict } from '../utils/types.js';
-import { Lookup, hex } from './helpers.js';
+import { Lookup, hex, getKind } from './helpers.js';
 
 import {
   type Datasize,
@@ -52,6 +52,7 @@ const Static = CodecKit.simple({
   },
   construct ({ value }) {
     return {
+      kind: getKind(value),
       decode: () => value,
       encode: () => {},
       format: () => value,

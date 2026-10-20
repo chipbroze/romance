@@ -1014,7 +1014,7 @@ type MeltedListArgs <
 
 function assertArrayFields (fields: FieldTuple): void {
   for (const field of fields) {
-    if (!['array', 'unknown', 'passthrough'].includes(field.item.kind)) {
+    if (field.item.kind !== 'array') {
       throw new Error(`Field ${field.name} does not decode to array`);
     }
   }

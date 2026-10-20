@@ -4,6 +4,7 @@ export {
 
 export {
   CodecNode,
+  codec_kinds
 } from './core/codec-types.js';
 
 export type {
@@ -11,6 +12,7 @@ export type {
   CodecRules,
   CodecConstraints,
   CodecInstance,
+  CodecKind,
   CompileApi,
   RuntimeApi
 } from './core/codec-types.js';
