@@ -812,7 +812,11 @@ const Entity = CodecKit.from<{
           return $lookup.byValue(value);
         } else {
           const enums = api.getLib!($lib_id) as string[];
-          return enums.indexOf(value);
+          const index = enums.indexOf(value);
+          if (index === -1) {
+            throw new Error(`Entity entry ${value} not found`);
+          }
+          return index;
         }
       }
     };
