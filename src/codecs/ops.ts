@@ -286,10 +286,10 @@ const View = CodecKit.composite({
         $item.encode(data, rom);
       },
       format: (data, api) => {
-        return formatter.call($self, data, api);
+        return formatter.call($self, $item.format(data), api);
       },
       parse: (formatted, api) => {
-        return parser.call($self, formatted, api);
+        return $item.parse(parser.call($self, formatted, api));
       }
     });
   }
