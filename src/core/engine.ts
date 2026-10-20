@@ -107,9 +107,12 @@ class FormatData implements DataSource, DataTarget<FormatOutput> {
         }
         const target_lib = this.#lib.get(id)!;
         if (target_lib.has(key)) {
-          throw new Error(`Cannot overwrite lib key ${key}`);
+          if (!assert.deepEqualTry(target_lib.get(key), value)) {
+            throw new Error(`Cannot overwrite lib key ${key}`);
+          }
+        } else {
+          target_lib.set(key, value);
         }
-        target_lib.set(key, value);
       }
     };
   }
