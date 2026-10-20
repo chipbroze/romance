@@ -671,8 +671,8 @@ const SplitList = CodecKit.from<{
   rule: 'split_list',
   normalizeArgs (args: Dict) {
     return {
-      fields: normalizeFields(args.fields),
-      ...args
+      ...args,
+      fields: normalizeFields(args.fields)
     };
   },
   isValidArgs (args: Dict): args is SplitArgs {
