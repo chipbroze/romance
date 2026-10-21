@@ -3,11 +3,9 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
+import { isObj } from '../utils/types.js';
 import { Project } from './project.js';
-import type { Hook, ProfileRegistry } from './project.js';
-import type { FormatOutput, EngineOptions } from './engine.js';
 import { file_formats, isValidFormat } from './file-formats.js';
-import type { FileFormatName } from './file-formats.js';
 import { EvilMap } from '../utils/map-utils.js';
 import { Rom, type RomFormat } from './rom.js';
 import {
@@ -17,6 +15,11 @@ import {
   writeDir,
   safeRead
 } from '../utils/fs.js';
+
+import type { Dict } from '../utils/types.js';
+import type { Hook, ProfileRegistry } from './project.js';
+import type { FormatOutput, EngineOptions } from './engine.js';
+import type { FileFormatName } from './file-formats.js';
 
 type SchemaConfig = {
   from: string;
@@ -30,8 +33,6 @@ type SchemaItem = {
   item: unknown;
   format: FileFormatName;
 };
-
-type SchemaModule = Record<string, SchemaItem>;
 
 type HookConfig = {
   from: string;
@@ -52,10 +53,6 @@ type Manifest = {
 };
 
 type Workspace = FormatOutput;
-
-function isObj (x: unknown): x is Record<string, unknown> {
-  return x != null && typeof x === 'object';
-}
 
 function toManifest (input: unknown): Manifest {
   const manifest = {
@@ -131,16 +128,18 @@ async function importSchemas (
   const schemas = await Promise.all(
     Object.keys(schema_registry).map(async (name) => {
       const { from, format='yaml' } = schema_registry[name]!;
-      // TODO: Fix this inaccurate safeImport generic
-      const module = await safeImport<SchemaModule>(from);
 
-      if (module == null) {
-        throw new Error(`No schema module found at "${from}"`);
-      }
       if (!isValidFormat(format)) {
         throw new Error(`No file format matching "${format}"`);
       }
-      const item = module[name];
+
+      const module = await safeImport<Dict>(from);
+      const item = module?.[name];
+
+      if (!isObj(item)) {
+        throw new Error(`No schema found at "${from}"`);
+      }
+
       return { name, item, format };
     })
   );
@@ -152,9 +151,13 @@ type Module = object & {
   default?: unknown | undefined
 }
 
-async function getModule <T> (module_path: string): Promise<T> {
+async function getModule (module_path: string) {
   const module = await safeImport<Module>(module_path);
-  return (module?.default ?? module) as T; // TODO: Where to validate Hook?
+  return (module?.default ?? module);
+}
+
+function isHook (hook: unknown): hook is Hook {
+  return typeof hook === 'function' && hook.length === 1;
 }
 
 async function importHooks (
@@ -164,7 +167,10 @@ async function importHooks (
   const hook_entries = await Promise.all(hook_names.map(
     async (name): Promise<[string, Hook]> => {
       const { from } = hooks_registry[name]!;
-      const hook = await getModule<Hook>(from);
+      const hook = await getModule(from);
+      if (!isHook(hook)) {
+        throw new Error(`Hook ${name} is not a valid hook function`);
+      }
       return [name, hook];
     }
   ));
