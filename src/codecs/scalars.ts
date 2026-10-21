@@ -238,8 +238,8 @@ const Enum = UintKit.simple({
     const $lookup = Lookup.fromNumRecord(values);
 
     return {
-      decode: (rom) => $lookup.by_key($uint.decode(rom)),
-      encode: (str, rom) => $uint.encode($lookup.by_value(str), rom),
+      decode: (rom) => $lookup.byKey($uint.decode(rom)),
+      encode: (str, rom) => $uint.encode($lookup.byValue(str), rom),
       format: (data) => data,
       parse: (data) => data
     };

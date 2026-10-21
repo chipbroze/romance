@@ -52,10 +52,6 @@ class Lookup <K, V> {
   #lookup = new Map<K, V>();
   #invert = new Map<V, K>();
 
-  // TODO: Remove these deprecated method aliases
-  by_key = this.byKey.bind(this);
-  by_value = this.byValue.bind(this);
-
   constructor(entries?: Iterable<readonly [K, V]>) {
     if (entries) {
       for (const [key, value] of entries) {

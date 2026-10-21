@@ -803,7 +803,7 @@ const Bitmask = CodecKit.from<{
         const uint = $uint.decode(rom);
 
         if ($states.hasKey(uint)) {
-          return $states.by_key(uint);
+          return $states.byKey(uint);
         }
 
         const flag_obj = rom.jsr(offset, () => {
@@ -816,7 +816,7 @@ const Bitmask = CodecKit.from<{
       },
       encode: (value, rom) => {
         if (!Array.isArray(value)) {
-          const uint = $states.by_value(value);
+          const uint = $states.byValue(value);
           $uint.encode(uint, rom);
           return;
         }
