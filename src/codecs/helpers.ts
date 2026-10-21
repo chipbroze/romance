@@ -14,7 +14,7 @@ class Hex {
 
   constructor (uint: number | null, size: Datasize) {
     this.#value = uint;
-    this.#len = uint ? this.#getLength(size) : 0;
+    this.#len = uint != null ? this.#getLength(size) : 0;
   }
   #getLength (size: Datasize) {
     return Rom.sizeBytes(size) * 2;
