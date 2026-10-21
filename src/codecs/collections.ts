@@ -1020,6 +1020,24 @@ function assertArrayFields (fields: FieldTuple): void {
   }
 }
 
+function isSparse (arr: unknown[]): boolean {
+  let seen_val = false;
+  let seen_undef = false;
+  for (const x of arr) {
+    if (x === undefined) {
+      if (seen_val) {
+        seen_undef = true;
+      }
+    } else {
+      if (seen_undef) {
+        return true;
+      }
+      seen_val = true;
+    }
+  }
+  return false;
+}
+
 const MeltedList = CodecKit.from<{
   struct: typeof Struct
 }>().run(Kit => Kit.composite({
@@ -1059,7 +1077,9 @@ const MeltedList = CodecKit.from<{
     > (list: Melted<StructType>) => {
       return Object.fromEntries($fields.map(field => {
         const field_values = list.map(item => item[field.name]);
-        // TODO: Protect against accidental undefined internal values
+        if (isSparse(field_values)) {
+          throw new Error(`Melted list arrays cannot be sparse`);
+        }
         return [field.name, field_values.filter(x => x !== undefined)];
       })) as StructType;
     };
