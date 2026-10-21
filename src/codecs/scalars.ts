@@ -254,7 +254,6 @@ const tile_schema = v.object({
   bpp: v.picklist([1, 2, 4]),
 });
 
-// TODO: Reduce use of `!` for potentially undefined variables
 const Tile = CodecKit.simple({
   alias: 'tile',
   kind: ['array', 'string'],
@@ -282,10 +281,10 @@ const Tile = CodecKit.simple({
         }
 
         for (let i = 0, mask = 0x01; i < bpp; i++, mask <<= 1) {
-          const bitplane = bitplanes[i];
+          const bitplane = bitplanes[i]!;
 
-          for (let j = 0; j < bitplane!.length; j++) {
-            const row = bitplane![j];
+          for (let j = 0; j < bitplane.length; j++) {
+            const row = bitplane[j];
 
             for (let k = 0, bit = 0x01; k < 8; k++, bit <<= 1) {
               if (row! & bit) {
@@ -320,12 +319,12 @@ const Tile = CodecKit.simple({
         }
 
         for (let i = 0; i < bpp; i += 2) {
-          const plane_a = bitplanes[i];
-          const plane_b = bitplanes[i + 1];
+          const plane_a = bitplanes[i]!;
+          const plane_b = bitplanes[i + 1]!;
 
           for (let j = 0; j < 8; j++) {
-            rom.write(plane_a![j]!, 'byte');
-            if (plane_b) rom.write(plane_b![j]!, 'byte');
+            rom.write(plane_a[j]!, 'byte');
+            if (plane_b) rom.write(plane_b[j]!, 'byte');
           }
         }
       },
