@@ -14,15 +14,15 @@
   "exports": {
     ".": {
       "default": "./dist/index.js",
-      "types": "./dist/index.d.js"
+      "types": "./dist/index.d.ts"
     },
     "./codec-kit": {
       "default": "./dist/codec-kit.js",
-      "types": "./dist/codec-kit.d.js"
+      "types": "./dist/codec-kit.d.ts"
     },
     "./codecs": {
       "default": "./dist/codecs/index.js",
-      "types": "./dist/codecs/index.d.js"
+      "types": "./dist/codecs/index.d.ts"
     }
   },
   "imports": {
